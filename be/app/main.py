@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import engine, Base
-from app.api import auth
+from app.api import auth, student_chat
 
 # create tables
 Base.metadata.create_all(bind=engine)
@@ -23,3 +23,4 @@ app.add_middleware(
 )
 
 app.include_router(auth, prefix="/auth", tags=["Auth"])
+app.include_router(student_chat.router, prefix="/chat", tags=["Chat"])
