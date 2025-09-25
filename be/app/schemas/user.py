@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from app.enums.roles import RoleEnum
 
 class UserBase(BaseModel):
     username: str
@@ -15,9 +16,10 @@ class UserLogin(BaseModel):
 class UserResponse(UserBase):
     id: int
     is_admin: bool
+    role: RoleEnum
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class TokenResponse(BaseModel):
     access_token: str

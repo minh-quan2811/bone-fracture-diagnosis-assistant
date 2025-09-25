@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, func, Enum
 from app.core.database import Base 
-from app.enums.roles import UserRole
+from app.enums.roles import RoleEnum
 
 class User(Base):
     __tablename__ = "users"
@@ -17,4 +17,4 @@ class User(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    role = Column(Enum(UserRole), nullable=False, default=UserRole.STUDENT)
+    role = Column(Enum(RoleEnum), nullable=False, default=RoleEnum.STUDENT)
