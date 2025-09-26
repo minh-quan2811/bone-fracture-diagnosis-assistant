@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { decodeToken } from "@/utils/jwt";
 import { 
   createConversation, 
@@ -24,6 +25,7 @@ import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 export default function StudentPage() {
+  const router = useRouter();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -35,19 +37,19 @@ export default function StudentPage() {
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     if (!storedToken) {
-      window.location.href = "/login";
+      router.push("/login");
       return;
     }
 
     const payload = decodeToken(storedToken);
     if (!payload) {
-      window.location.href = "/login";
+      router.push("/login");
       return;
     }
 
     const isAdmin = payload.is_admin === true || payload.is_admin === "True" || payload.is_admin === "true";
     if (isAdmin) {
-      window.location.href = "/teacher";
+      router.push("/teacher");
       return;
     }
 
@@ -55,7 +57,7 @@ export default function StudentPage() {
     setAuthorized(true);
     loadUserData(storedToken);
     loadConversations(storedToken);
-  }, []);
+  }, [router]);
 
   const loadUserData = async (authToken: string) => {
     try {
@@ -64,7 +66,7 @@ export default function StudentPage() {
     } catch (error) {
       console.error("Failed to load user data:", error);
       localStorage.removeItem("token");
-      window.location.href = "/login";
+      router.push("/login");
     }
   };
 
@@ -99,9 +101,9 @@ export default function StudentPage() {
   };
 
   const handleSelectConversation = async (conversation: ConversationBase) => {
-  setActiveConversation({ ...conversation, messages: [] });
-  await loadMessages(conversation.id);
-};
+    setActiveConversation({ ...conversation, messages: [] });
+    await loadMessages(conversation.id);
+  };
 
   const handleSendMessage = async (messageContent: string) => {
     if (!activeConversation) return;
@@ -123,7 +125,7 @@ export default function StudentPage() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
-    window.location.href = "/login";
+    router.push("/login");
   };
 
   if (authorized === null) {

@@ -1,10 +1,11 @@
-// frontend/app/login/page.tsx
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { login } from "@/lib/api";
 import { decodeToken } from "@/utils/jwt";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -23,10 +24,12 @@ export default function LoginPage() {
       if (!payload) throw new Error("Invalid token payload");
 
       const isAdmin = payload.is_admin === true || payload.is_admin === "True" || payload.is_admin === "true";
+      
+      // Use router.push instead of window.location.href
       if (isAdmin) {
-        window.location.href = "/teacher";
+        router.push("/teacher");
       } else {
-        window.location.href = "/student";
+        router.push("/student");
       }
     } catch (error: any) {
       setErr(error.message || "Login error");
