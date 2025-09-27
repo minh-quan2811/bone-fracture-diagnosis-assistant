@@ -34,6 +34,18 @@ export default function StudentPage() {
   const [token, setToken] = useState<string>("");
 
   useEffect(() => {
+    // Prevent body scroll
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    
+    // Cleanup function to restore scroll when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+      document.documentElement.style.overflow = 'unset';
+    };
+  }, []);
+
+  useEffect(() => {
     const storedToken = localStorage.getItem("token");
     if (!storedToken) {
       router.push("/login");
@@ -144,9 +156,10 @@ export default function StudentPage() {
         onLogout={handleLogout}
       />
 
-      <ResizableLayout>
-        <ResizableLayout.Panel defaultSize={60} minSize={30}>
-          <div className="flex flex-col h-full">
+      {/* Main content area - ensure it fills the remaining space */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <ResizableLayout className="flex-1">
+          <ResizableLayout.Panel defaultSize={60} minSize={30} className="flex flex-col overflow-hidden">
             {activeConversation ? (
               <>
                 <ChatHeader
@@ -154,7 +167,7 @@ export default function StudentPage() {
                   subtitle="Ask me about bone fractures and injuries"
                 />
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
                   {messages.length === 0 ? (
                     <EmptyMessageState userRole={user?.role} />
                   ) : (
@@ -167,41 +180,28 @@ export default function StudentPage() {
                   )}
                 </div>
 
-                <ChatInput
-                  onSendMessage={handleSendMessage}
-                  loading={loading}
-                  placeholder="Ask about bone fractures, treatments, or symptoms..."
-                />
+                <div className="flex-shrink-0">
+                  <ChatInput
+                    onSendMessage={handleSendMessage}
+                    loading={loading}
+                    placeholder="Ask about bone fractures, treatments, or symptoms..."
+                  />
+                </div>
               </>
             ) : (
-              <EmptyChatState onNewChat={handleNewConversation} />
-            )}
-          </div>
-        </ResizableLayout.Panel>
-
-        <ResizableLayout.Splitter />
-
-        <ResizableLayout.Panel defaultSize={40} minSize={25}>
-          <div className="flex flex-col h-full">
-            {/* FractureDetectionPanel will now take the full height of its panel */}
-            <FractureDetectionPanel token={token} user={user} />
-
-            {/* If you want to keep 'Additional tools coming soon', it can be placed here,
-                but it might make the FractureDetectionPanel less like a dedicated 'settings' panel.
-                For a true 'run settings' feel, the FractureDetectionPanel should fill the space.
-                I'm commenting it out for now to give FractureDetectionPanel full height.
-            */}
-            {/*
-            <div className="flex-1 bg-gray-50 flex items-center justify-center border-t border-gray-200">
-              <div className="text-center text-gray-400">
-                <div className="text-4xl mb-2">📋</div>
-                <p className="text-sm">Additional tools coming soon</p>
+              <div className="flex-1 overflow-hidden">
+                <EmptyChatState onNewChat={handleNewConversation} />
               </div>
-            </div>
-            */}
-          </div>
-        </ResizableLayout.Panel>
-      </ResizableLayout>
+            )}
+          </ResizableLayout.Panel>
+
+          <ResizableLayout.Splitter />
+
+          <ResizableLayout.Panel defaultSize={40} minSize={25} className="flex flex-col overflow-hidden">
+            <FractureDetectionPanel token={token} user={user} />
+          </ResizableLayout.Panel>
+        </ResizableLayout>
+      </div>
     </DashboardLayout>
   );
 }

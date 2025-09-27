@@ -25,9 +25,9 @@ export function ChatSidebar({
   };
 
   return (
-    <div className="w-80 bg-white shadow-lg flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200">
+    <div className="w-80 bg-white shadow-lg flex flex-col h-full overflow-hidden">
+      {/* Header - Fixed at top */}
+      <div className="flex-shrink-0 p-6 border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-bold text-gray-900">🩺 Bone Helper</h1>
           <button
@@ -56,8 +56,8 @@ export function ChatSidebar({
         </Button>
       </div>
 
-      {/* Conversations List */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Conversations List - Scrollable */}
+      <div className="flex-1 overflow-y-auto min-h-0">
         <ConversationList
           conversations={conversations}
           activeConversationId={activeConversationId}

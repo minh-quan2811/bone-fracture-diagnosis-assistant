@@ -88,13 +88,16 @@ export function ResizableLayout({ children, className = "" }: ResizableLayoutPro
   const rightPanelSize = 100 - leftPanelSize;
 
   return (
-    <div ref={containerRef} className={`flex h-full ${className}`}>
-      <div style={{ width: `${leftPanelSize}%` }} className={leftPanel?.props.className || ""}>
+    <div ref={containerRef} className={`flex h-full w-full ${className}`}>
+      <div 
+        style={{ width: `${leftPanelSize}%` }} 
+        className={`h-full ${leftPanel?.props.className || ""}`}
+      >
         {leftPanel?.props.children}
       </div>
 
       <div
-        className={`w-1 bg-gray-300 hover:bg-gray-400 cursor-col-resize transition-colors relative ${
+        className={`w-1 bg-gray-300 hover:bg-gray-400 cursor-col-resize transition-colors relative h-full flex-shrink-0 ${
           splitter?.props.className || ""
         }`}
         onMouseDown={handleMouseDown}
@@ -104,7 +107,10 @@ export function ResizableLayout({ children, className = "" }: ResizableLayoutPro
         </div>
       </div>
 
-      <div style={{ width: `${rightPanelSize}%` }} className={rightPanel?.props.className || ""}>
+      <div 
+        style={{ width: `${rightPanelSize}%` }} 
+        className={`h-full ${rightPanel?.props.className || ""}`}
+      >
         {rightPanel?.props.children}
       </div>
     </div>
@@ -112,7 +118,7 @@ export function ResizableLayout({ children, className = "" }: ResizableLayoutPro
 }
 
 function Panel({ children, className = "" }: PanelProps) {
-  return <div className={className}>{children}</div>;
+  return <div className={`h-full ${className}`}>{children}</div>;
 }
 
 function Splitter({ className = "" }: SplitterProps) {

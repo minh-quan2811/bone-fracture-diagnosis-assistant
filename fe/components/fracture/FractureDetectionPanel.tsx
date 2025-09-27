@@ -162,7 +162,6 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
     canvas.height = canvasHeight * window.devicePixelRatio;
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(image, 0, 0, canvasWidth, canvasHeight);
 
@@ -207,8 +206,9 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
   };
 
   return (
-    <div className="h-full bg-white border-l border-gray-200 flex flex-col">
-      <div className="p-4 border-b border-gray-200 bg-gray-50">
+    <div className="h-full bg-white border-l border-gray-200 flex flex-col overflow-hidden">
+      {/* Header - Fixed at top */}
+      <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-gray-900">🦴 Fracture Detection</h3>
@@ -236,134 +236,144 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
       </div>
 
       {!isCollapsed && (
-        // This is the main content area for the panel, now configured as flex-col
-        <div className="flex-1 p-4 flex flex-col overflow-y-auto">
-          <div className="mb-4"> {/* Top controls: Upload button, description */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="hidden"
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-              Upload X-ray Image
-            </button>
-            <p className="text-xs text-gray-500 mt-1 text-center">
-              JPEG, PNG, BMP, TIFF (max 20MB)
-            </p>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-              <div className="text-red-800 text-sm">{error}</div>
-            </div>
-          )}
-
-          {image && ( // These controls only appear if an image is loaded
-            <div className="mb-4 space-y-2">
-              <div className="flex gap-2">
-                <button
-                  onClick={runFracturePrediction}
-                  disabled={isLoading || !token}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? '⏳' :
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  }
-                  {isLoading ? 'Analyzing...' : 'Detect'}
-                </button>
-                <button
-                  onClick={clearAll}
-                  className="px-3 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
-
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={showAiPredictions}
-                  onChange={(e) => setShowAiPredictions(e.target.checked)}
-                  className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
-                />
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                Show AI Predictions
-              </label>
-            </div>
-          )}
-
-          {/* This container needs to grow to fill space and center its content */}
-          <div ref={imageContainerRef} className="flex-1 border-2 border-gray-300 rounded-lg overflow-hidden mb-4 bg-white flex items-center justify-center p-2">
-            {image ? (
-              <canvas
-                ref={canvasRef}
-                className="max-w-full max-h-full block"
+        // Scrollable content area
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="p-4 space-y-4">
+            {/* Upload Controls */}
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
               />
-            ) : (
-              // This placeholder also needs to take full height of its flex-1 parent
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center w-full h-full flex flex-col items-center justify-center text-gray-500">
-                <div className="text-4xl mb-2">📷</div> {/* Slightly larger icon for the main empty state */}
-                <p className="text-base">Upload an X-ray image</p> {/* Slightly larger text */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Upload X-ray Image
+              </button>
+              <p className="text-xs text-gray-500 mt-1 text-center">
+                JPEG, PNG, BMP, TIFF (max 20MB)
+              </p>
+            </div>
+
+            {/* Error Display */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="text-red-800 text-sm">{error}</div>
+              </div>
+            )}
+
+            {/* Image Controls */}
+            {image && (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <button
+                    onClick={runFracturePrediction}
+                    disabled={isLoading || !token}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? '⏳' :
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    }
+                    {isLoading ? 'Analyzing...' : 'Detect'}
+                  </button>
+                  <button
+                    onClick={clearAll}
+                    className="px-3 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={showAiPredictions}
+                    onChange={(e) => setShowAiPredictions(e.target.checked)}
+                    className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
+                  />
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  Show AI Predictions
+                </label>
+              </div>
+            )}
+
+            {/* Image Display Container */}
+            <div 
+              ref={imageContainerRef} 
+              className="border-2 border-gray-300 rounded-lg overflow-hidden bg-white flex items-center justify-center"
+              style={{ height: '300px', minHeight: '300px' }}
+            >
+              {image ? (
+                <canvas
+                  ref={canvasRef}
+                  className="max-w-full max-h-full block"
+                />
+              ) : (
+                <div className="text-center text-gray-500 p-8">
+                  <div className="text-4xl mb-2">📷</div>
+                  <p className="text-base">Upload an X-ray image</p>
+                </div>
+              )}
+            </div>
+
+            {/* Results */}
+            {predictionResult && (
+              <div className="bg-gray-50 rounded-lg p-3">
+                <h4 className="font-medium text-gray-900 mb-2 text-sm">Analysis Results</h4>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span>Detections:</span>
+                    <span>{predictionResult.detection_count}</span>
+                  </div>
+                  {predictionResult.max_confidence && (
+                    <div className="flex justify-between">
+                      <span>Max Confidence:</span>
+                      <span>{(predictionResult.max_confidence * 100).toFixed(1)}%</span>
+                    </div>
+                  )}
+                  {predictionResult.inference_time && (
+                    <div className="flex justify-between">
+                      <span>Processing Time:</span>
+                      <span>{(predictionResult.inference_time * 1000).toFixed(0)}ms</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Predictions List */}
+            {aiPredictions.length > 0 && (
+              <div className="bg-red-50 rounded-lg p-3">
+                <h4 className="font-medium text-red-900 mb-2 text-sm">
+                  Detected Fractures ({aiPredictions.length})
+                </h4>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {aiPredictions.map((prediction, index) => (
+                    <div key={prediction.id} className="text-xs p-2 bg-red-100 rounded">
+                      <div className="font-medium">{prediction.label} #{index + 1}</div>
+                      <div className="text-red-700">
+                        Confidence: {(prediction.confidence * 100).toFixed(1)}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
-
-          {predictionResult && ( // These results appear at the bottom if present
-            <div className="bg-gray-50 rounded-lg p-3 mb-4">
-              <h4 className="font-medium text-gray-900 mb-2 text-sm">Analysis Results</h4>
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between">
-                  <span>Detections:</span>
-                  <span>{predictionResult.detection_count}</span>
-                </div>
-                {predictionResult.max_confidence && (
-                  <div className="flex justify-between">
-                    <span>Max Confidence:</span>
-                    <span>{(predictionResult.max_confidence * 100).toFixed(1)}%</span>
-                  </div>
-                )}
-                {predictionResult.inference_time && (
-                  <div className="flex justify-between">
-                    <span>Processing Time:</span>
-                    <span>{(predictionResult.inference_time * 1000).toFixed(0)}ms</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {aiPredictions.length > 0 && ( // These predictions appear at the bottom if present
-            <div className="bg-red-50 rounded-lg p-3">
-              <h4 className="font-medium text-red-900 mb-2 text-sm">
-                Detected Fractures ({aiPredictions.length})
-              </h4>
-              <div className="space-y-2 max-h-24 overflow-y-auto">
-                {aiPredictions.map((prediction, index) => (
-                  <div key={prediction.id} className="text-xs p-2 bg-red-100 rounded">
-                    <div className="font-medium">{prediction.label} #{index + 1}</div>
-                    <div className="text-red-700">
-                      Confidence: {(prediction.confidence * 100).toFixed(1)}%
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
