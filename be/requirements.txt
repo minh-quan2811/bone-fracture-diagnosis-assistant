@@ -9,3 +9,8 @@ pydantic-settings
 pydantic
 langchain
 langchain-google-genai
+ultralytics
+opencv-python
+Pillow
+numpy
+python-multipart
