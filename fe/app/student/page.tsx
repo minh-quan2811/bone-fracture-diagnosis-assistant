@@ -22,6 +22,7 @@ import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { FractureDetectionPanel } from "@/components/fracture/FractureDetectionPanel";
 import { ResizableLayout } from "@/components/ui/ResizableLayout";
+import { SidebarToggleButton } from "@/components/ui/SidebarToggleButton";
 
 export default function StudentPage() {
   const router = useRouter();
@@ -32,6 +33,7 @@ export default function StudentPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [token, setToken] = useState<string>("");
+  const [sidebarVisible, setSidebarVisible] = useState(true);
 
   useEffect(() => {
     // Prevent body scroll
@@ -119,12 +121,28 @@ export default function StudentPage() {
   const handleSendMessage = async (messageContent: string) => {
     if (!activeConversation) return;
 
+    // Immediately add the user message to the UI
+    const userMessage: Message = {
+      id: Date.now(), // Temporary ID
+      content: messageContent,
+      role: 'user',
+      created_at: new Date().toISOString()
+    };
+    
+    setMessages(prevMessages => [...prevMessages, userMessage]);
     setLoading(true);
+
     try {
       const newMessages = await sendMessage(activeConversation.id, messageContent, token);
-      setMessages(prevMessages => [...prevMessages, ...newMessages]);
+      // Replace the temporary user message with the actual response messages
+      setMessages(prevMessages => {
+        const withoutTempMessage = prevMessages.slice(0, -1); // Remove temporary user message
+        return [...withoutTempMessage, ...newMessages];
+      });
       await loadConversations(token);
     } catch (error) {
+      // Remove the temporary user message on error
+      setMessages(prevMessages => prevMessages.slice(0, -1));
       console.error("Failed to send message:", error);
       throw error;
     } finally {
@@ -147,25 +165,39 @@ export default function StudentPage() {
 
   return (
     <DashboardLayout>
-      <ChatSidebar
-        user={user}
-        conversations={conversations}
-        activeConversationId={activeConversation?.id || null}
-        onNewChat={handleNewConversation}
-        onSelectConversation={handleSelectConversation}
-        onLogout={handleLogout}
-      />
+      {/* Sidebar - conditionally rendered with transition */}
+      <div className={`${sidebarVisible ? 'w-80' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden`}>
+        <ChatSidebar
+          user={user}
+          conversations={conversations}
+          activeConversationId={activeConversation?.id || null}
+          onNewChat={handleNewConversation}
+          onSelectConversation={handleSelectConversation}
+          onLogout={handleLogout}
+        />
+      </div>
 
-      {/* Main content area - ensure it fills the remaining space */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      {/* Main content area - adjust width based on sidebar visibility */}
+      <div className={`flex-1 flex flex-col min-h-0 overflow-hidden ${sidebarVisible ? '' : 'w-full'}`}>
         <ResizableLayout className="flex-1">
           <ResizableLayout.Panel defaultSize={60} minSize={30} className="flex flex-col overflow-hidden">
             {activeConversation ? (
               <>
-                <ChatHeader
-                  title={activeConversation.title || "New Chat"}
-                  subtitle="Ask me about bone fractures and injuries"
-                />
+                {/* Chat Header with sidebar toggle */}
+                <div className="flex-shrink-0 bg-white border-b border-gray-200 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <SidebarToggleButton 
+                        isVisible={sidebarVisible}
+                        onToggle={() => setSidebarVisible(!sidebarVisible)}
+                      />
+                      <div>
+                        <h2 className="font-semibold text-gray-900">{activeConversation.title || "New Chat"}</h2>
+                        <p className="text-sm text-gray-500">Ask me about bone fractures and injuries</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
                   {messages.length === 0 ? (
@@ -190,6 +222,13 @@ export default function StudentPage() {
               </>
             ) : (
               <div className="flex-1 overflow-hidden">
+                {/* Empty state with sidebar toggle */}
+                <div className="flex-shrink-0 bg-white border-b border-gray-200 p-4">
+                  <SidebarToggleButton 
+                    isVisible={sidebarVisible}
+                    onToggle={() => setSidebarVisible(!sidebarVisible)}
+                  />
+                </div>
                 <EmptyChatState onNewChat={handleNewConversation} />
               </div>
             )}
