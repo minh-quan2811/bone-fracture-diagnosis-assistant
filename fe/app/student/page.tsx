@@ -2,18 +2,15 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { decodeToken } from "@/utils/jwt";
-import { 
-  createConversation, 
-  getConversations, 
-  sendMessage, 
+import {
+  createConversation,
+  getConversations,
+  sendMessage,
   getMessages,
-  getMe 
+  getMe
 } from "@/lib/api";
 
-// Import types
 import { Message, Conversation, ConversationBase, User } from "@/types";
-
-// Import components
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ChatSidebar } from "@/components/layout/ChatSidebar";
 import { ChatHeader } from "@/components/layout/ChatHeader";
@@ -23,6 +20,8 @@ import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { FractureDetectionPanel } from "@/components/fracture/FractureDetectionPanel";
+import { ResizableLayout } from "@/components/ui/ResizableLayout";
 
 export default function StudentPage() {
   const router = useRouter();
@@ -112,12 +111,10 @@ export default function StudentPage() {
     try {
       const newMessages = await sendMessage(activeConversation.id, messageContent, token);
       setMessages(prevMessages => [...prevMessages, ...newMessages]);
-      
-      // Update conversation list
       await loadConversations(token);
     } catch (error) {
       console.error("Failed to send message:", error);
-      throw error; // Re-throw so ChatInput can handle it
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -138,7 +135,6 @@ export default function StudentPage() {
 
   return (
     <DashboardLayout>
-      {/* Sidebar */}
       <ChatSidebar
         user={user}
         conversations={conversations}
@@ -148,42 +144,64 @@ export default function StudentPage() {
         onLogout={handleLogout}
       />
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {activeConversation ? (
-          <>
-            {/* Chat Header */}
-            <ChatHeader
-              title={activeConversation.title || "New Chat"}
-              subtitle="Ask me about bone fractures and injuries"
-            />
+      <ResizableLayout>
+        <ResizableLayout.Panel defaultSize={60} minSize={30}>
+          <div className="flex flex-col h-full">
+            {activeConversation ? (
+              <>
+                <ChatHeader
+                  title={activeConversation.title || "New Chat"}
+                  subtitle="Ask me about bone fractures and injuries"
+                />
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {messages.length === 0 ? (
-                <EmptyMessageState userRole={user?.role} />
-              ) : (
-                <>
-                  {messages.map((message) => (
-                    <MessageBubble key={message.id} message={message} />
-                  ))}
-                  
-                  {loading && <TypingIndicator />}
-                </>
-              )}
+                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                  {messages.length === 0 ? (
+                    <EmptyMessageState userRole={user?.role} />
+                  ) : (
+                    <>
+                      {messages.map((message) => (
+                        <MessageBubble key={message.id} message={message} />
+                      ))}
+                      {loading && <TypingIndicator />}
+                    </>
+                  )}
+                </div>
+
+                <ChatInput
+                  onSendMessage={handleSendMessage}
+                  loading={loading}
+                  placeholder="Ask about bone fractures, treatments, or symptoms..."
+                />
+              </>
+            ) : (
+              <EmptyChatState onNewChat={handleNewConversation} />
+            )}
+          </div>
+        </ResizableLayout.Panel>
+
+        <ResizableLayout.Splitter />
+
+        <ResizableLayout.Panel defaultSize={40} minSize={25}>
+          <div className="flex flex-col h-full">
+            {/* FractureDetectionPanel will now take the full height of its panel */}
+            <FractureDetectionPanel token={token} user={user} />
+
+            {/* If you want to keep 'Additional tools coming soon', it can be placed here,
+                but it might make the FractureDetectionPanel less like a dedicated 'settings' panel.
+                For a true 'run settings' feel, the FractureDetectionPanel should fill the space.
+                I'm commenting it out for now to give FractureDetectionPanel full height.
+            */}
+            {/*
+            <div className="flex-1 bg-gray-50 flex items-center justify-center border-t border-gray-200">
+              <div className="text-center text-gray-400">
+                <div className="text-4xl mb-2">📋</div>
+                <p className="text-sm">Additional tools coming soon</p>
+              </div>
             </div>
-
-            {/* Message Input */}
-            <ChatInput
-              onSendMessage={handleSendMessage}
-              loading={loading}
-              placeholder="Ask about bone fractures, treatments, or symptoms..."
-            />
-          </>
-        ) : (
-          <EmptyChatState onNewChat={handleNewConversation} />
-        )}
-      </div>
+            */}
+          </div>
+        </ResizableLayout.Panel>
+      </ResizableLayout>
     </DashboardLayout>
   );
 }

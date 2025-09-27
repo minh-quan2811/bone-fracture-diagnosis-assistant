@@ -4,7 +4,7 @@ interface EmptyMessageStateProps {
 
 export function EmptyMessageState({ userRole }: EmptyMessageStateProps) {
   return (
-    <div className="text-center py-12">
+    <div className="text-center py-8">
       <div className="text-6xl mb-4">🤖</div>
       <h3 className="text-lg font-medium text-gray-900 mb-2">
         Start a conversation
