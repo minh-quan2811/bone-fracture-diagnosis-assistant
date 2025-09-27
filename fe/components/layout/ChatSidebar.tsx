@@ -30,12 +30,6 @@ export function ChatSidebar({
       <div className="flex-shrink-0 p-6 border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-bold text-gray-900">🩺 Bone Helper</h1>
-          <button
-            onClick={onLogout}
-            className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            Logout
-          </button>
         </div>
         
         {user && (
@@ -63,6 +57,16 @@ export function ChatSidebar({
           activeConversationId={activeConversationId}
           onSelectConversation={onSelectConversation}
         />
+      </div>
+
+      {/* Logout at bottom */}
+      <div className="p-6 border-t border-gray-200">
+        <button
+          onClick={onLogout}
+          className="px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-md hover:bg-red-600 transition"
+        >
+          Logout
+        </button>
       </div>
     </div>
   );
