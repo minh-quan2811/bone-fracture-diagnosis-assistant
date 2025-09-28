@@ -75,7 +75,7 @@ def add_message(
     ai_msg = Message(
         conversation_id=conversation_id,
         sender_id=None,  # AI has no sender_id
-        role=RoleEnum.ASSISSTANT,  # Always assistant for AI responses
+        role=RoleEnum.ASSISTANT,  # Always assistant for AI responses
         content=ai_response,
     )
     db.add(ai_msg)

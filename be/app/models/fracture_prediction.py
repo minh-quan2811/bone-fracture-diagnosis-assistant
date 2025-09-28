@@ -45,7 +45,8 @@ class FractureDetection(Base):
     prediction_id = Column(Integer, ForeignKey("fracture_predictions.id"), nullable=False)
     
     # Source of the detection (student or AI)
-    source = Column(Enum(PredictionSource), nullable=False)
+    source = Column(Enum(PredictionSource, name="prediction_source", values_callable=lambda obj: [e.value for e in obj]), 
+                    nullable=False)
     
     # Detection Results
     class_id = Column(Integer, nullable=False, default=0)  # 0 for fracture

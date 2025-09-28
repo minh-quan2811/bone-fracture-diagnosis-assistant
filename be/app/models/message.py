@@ -7,15 +7,14 @@ class Message(Base):
     __tablename__ = "messages"
 
     id = Column(Integer, primary_key=True, index=True)
-    
     conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False)
-
     sender_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-
-    role = Column(Enum(RoleEnum), nullable=False)
-
+    
+    role = Column(
+        Enum(RoleEnum, name='roleenum', values_callable=lambda obj: [e.value for e in obj]),
+        nullable=False
+    )
+    
     content = Column(Text, nullable=False)
-
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
     conversation = relationship("Conversation", back_populates="messages")
