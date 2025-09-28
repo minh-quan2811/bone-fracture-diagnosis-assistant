@@ -155,6 +155,10 @@ export default function StudentPage() {
     router.push("/login");
   };
 
+  const handleToggleSidebar = () => {
+    setSidebarVisible(!sidebarVisible);
+  };
+
   if (authorized === null) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -166,7 +170,7 @@ export default function StudentPage() {
   return (
     <DashboardLayout>
       {/* Sidebar - conditionally rendered with transition */}
-      <div className={`${sidebarVisible ? 'w-80' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden`}>
+      <div className={`${sidebarVisible ? 'w-64' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden`}>
         <ChatSidebar
           user={user}
           conversations={conversations}
@@ -174,6 +178,7 @@ export default function StudentPage() {
           onNewChat={handleNewConversation}
           onSelectConversation={handleSelectConversation}
           onLogout={handleLogout}
+          onToggleSidebar={handleToggleSidebar}
         />
       </div>
 
@@ -183,14 +188,16 @@ export default function StudentPage() {
           <ResizableLayout.Panel defaultSize={60} minSize={30} className="flex flex-col overflow-hidden">
             {activeConversation ? (
               <>
-                {/* Chat Header with sidebar toggle */}
+                {/* Chat Header with sidebar toggle only when sidebar is hidden */}
                 <div className="flex-shrink-0 bg-white border-b border-gray-200 p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <SidebarToggleButton 
-                        isVisible={sidebarVisible}
-                        onToggle={() => setSidebarVisible(!sidebarVisible)}
-                      />
+                      {!sidebarVisible && (
+                        <SidebarToggleButton 
+                          isVisible={sidebarVisible}
+                          onToggle={handleToggleSidebar}
+                        />
+                      )}
                       <div>
                         <h2 className="font-semibold text-gray-900">{activeConversation.title || "New Chat"}</h2>
                         <p className="text-sm text-gray-500">Ask me about bone fractures and injuries</p>
@@ -222,12 +229,14 @@ export default function StudentPage() {
               </>
             ) : (
               <div className="flex-1 overflow-hidden">
-                {/* Empty state with sidebar toggle */}
+                {/* Empty state with sidebar toggle only when sidebar is hidden */}
                 <div className="flex-shrink-0 bg-white border-b border-gray-200 p-4">
-                  <SidebarToggleButton 
-                    isVisible={sidebarVisible}
-                    onToggle={() => setSidebarVisible(!sidebarVisible)}
-                  />
+                  {!sidebarVisible && (
+                    <SidebarToggleButton 
+                      isVisible={sidebarVisible}
+                      onToggle={handleToggleSidebar}
+                    />
+                  )}
                 </div>
                 <EmptyChatState onNewChat={handleNewConversation} />
               </div>

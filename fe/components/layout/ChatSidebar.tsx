@@ -2,6 +2,7 @@ import { User, ConversationBase } from "@/types";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
 import { ConversationList } from "../chat/ConversationList";
+import { SidebarToggleButton } from "../ui/SidebarToggleButton";
 
 interface ChatSidebarProps {
   user: User | null;
@@ -10,6 +11,7 @@ interface ChatSidebarProps {
   onNewChat: () => Promise<void>;
   onSelectConversation: (conversation: ConversationBase) => Promise<void>;
   onLogout: () => void;
+  onToggleSidebar: () => void;
 }
 
 export function ChatSidebar({
@@ -18,24 +20,30 @@ export function ChatSidebar({
   activeConversationId,
   onNewChat,
   onSelectConversation,
-  onLogout
+  onLogout,
+  onToggleSidebar
 }: ChatSidebarProps) {
   const handleNewChat = async () => {
     await onNewChat();
   };
 
   return (
-    <div className="w-80 bg-white shadow-lg flex flex-col h-full overflow-hidden">
-      {/* Header - Fixed at top */}
-      <div className="flex-shrink-0 p-6 border-b border-gray-200">
+    <div className="w-64 bg-white shadow-lg flex flex-col h-full overflow-hidden">
+      {/* Header - Fixed at top with close button */}
+      <div className="flex-shrink-0 p-4 border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-gray-900">🩺 Bone Helper</h1>
+          <h1 className="text-lg font-bold text-gray-900">🩺 Bone Helper</h1>
+          <SidebarToggleButton 
+            isVisible={true}
+            onToggle={onToggleSidebar}
+            className="hover:bg-gray-100"
+          />
         </div>
         
         {user && (
           <div className="mb-4">
             <p className="text-sm text-gray-600">Welcome back!</p>
-            <p className="font-medium text-gray-900">{user.username}</p>
+            <p className="font-medium text-gray-900 text-sm">{user.username}</p>
             <Badge 
               variant={user.role === "student" ? "student" : "teacher"}
               size="sm"
@@ -45,7 +53,7 @@ export function ChatSidebar({
           </div>
         )}
         
-        <Button onClick={handleNewChat} className="w-full">
+        <Button onClick={handleNewChat} className="w-full text-sm">
           + New Chat
         </Button>
       </div>
@@ -60,10 +68,10 @@ export function ChatSidebar({
       </div>
 
       {/* Logout at bottom */}
-      <div className="p-6 border-t border-gray-200">
+      <div className="p-4 border-t border-gray-200 flex justify-center">
         <button
           onClick={onLogout}
-          className="px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-md hover:bg-red-600 transition"
+          className="px-3 py-1.5 bg-red-500 text-white text-sm font-medium rounded-md hover:bg-red-600 transition"
         >
           Logout
         </button>
