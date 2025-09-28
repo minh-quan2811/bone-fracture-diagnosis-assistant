@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
+from app.enums.prediction_source import PredictionSource
 
 class BoundingBox(BaseModel):
     x_min: int
@@ -16,18 +17,32 @@ class DetectionResult(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0)
     bounding_box: BoundingBox
 
-class FractureDetectionOut(BaseModel):
-    id: int
-    prediction_id: int
-    class_id: int
-    class_name: str
-    confidence: float
+class StudentAnnotation(BaseModel):
     x_min: int
     y_min: int
     x_max: int
     y_max: int
     width: int
     height: int
+    notes: Optional[str] = None
+
+class StudentAnnotationsSubmit(BaseModel):
+    annotations: List[StudentAnnotation]
+
+class FractureDetectionOut(BaseModel):
+    id: int
+    prediction_id: int
+    source: PredictionSource
+    class_id: int
+    class_name: str
+    confidence: Optional[float]
+    x_min: int
+    y_min: int
+    x_max: int
+    y_max: int
+    width: int
+    height: int
+    student_notes: Optional[str]
     created_at: datetime
 
     class Config:
@@ -42,13 +57,17 @@ class FracturePredictionOut(BaseModel):
     image_width: Optional[int]
     image_height: Optional[int]
     image_format: Optional[str]
-    has_fracture: bool
-    detection_count: int
-    max_confidence: Optional[float]
+    has_student_predictions: bool
+    has_ai_predictions: bool
+    student_prediction_count: int
+    ai_prediction_count: int
     model_version: str
-    inference_time: Optional[float]
+    ai_inference_time: Optional[float]
     confidence_threshold: float
+    ai_max_confidence: Optional[float]
     created_at: datetime
+    student_predictions_at: Optional[datetime]
+    ai_predictions_at: Optional[datetime]
     detections: List[FractureDetectionOut] = []
 
     class Config:
@@ -57,9 +76,11 @@ class FracturePredictionOut(BaseModel):
 class PredictionSummary(BaseModel):
     id: int
     image_filename: str
-    has_fracture: bool
-    detection_count: int
-    max_confidence: Optional[float]
+    has_student_predictions: bool
+    has_ai_predictions: bool
+    student_prediction_count: int
+    ai_prediction_count: int
+    ai_max_confidence: Optional[float]
     created_at: datetime
 
 class YOLOv8Response(BaseModel):
@@ -72,6 +93,13 @@ class YOLOv8Response(BaseModel):
 
 class PredictionStats(BaseModel):
     total_predictions: int
-    fracture_predictions: int
-    normal_predictions: int
-    average_confidence: float
+    student_predictions: int
+    ai_predictions: int
+    average_ai_confidence: float
+
+class PredictionComparison(BaseModel):
+    prediction_id: int
+    image_filename: str
+    student_detections: List[FractureDetectionOut]
+    ai_detections: List[FractureDetectionOut]
+    comparison_metrics: dict

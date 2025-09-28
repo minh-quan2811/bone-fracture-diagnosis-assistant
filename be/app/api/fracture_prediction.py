@@ -1,3 +1,5 @@
+# File: be/app/api/fracture_prediction.py
+
 import os
 import shutil
 import time
@@ -6,16 +8,20 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status,
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from datetime import datetime
 
 from app.core.database import get_db
 from app.api.auth import get_current_user
 from app.models.user import User
 from app.models.fracture_prediction import FracturePrediction, FractureDetection
+from app.enums.prediction_source import PredictionSource
 from app.schemas.fracture_prediction import (
     FracturePredictionOut,
     PredictionSummary,
     YOLOv8Response,
-    PredictionStats
+    PredictionStats,
+    StudentAnnotationsSubmit,
+    PredictionComparison
 )
 from app.services.bone_fracture_predict.predictor import fracture_predictor
 
@@ -57,39 +63,43 @@ def save_uploaded_file(file: UploadFile, user_id: int) -> str:
     
     return file_path
 
-@router.post("/predict", response_model=FracturePredictionOut)
-async def predict_fracture(
+@router.post("/upload", response_model=FracturePredictionOut)
+async def upload_image(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    """Upload an image for fracture prediction (without running AI prediction yet)"""
     validate_image_file(file)
     
     try:
         # Save uploaded file
         file_path = save_uploaded_file(file, current_user.id)
         
-        # Read file for prediction
+        # Read file to get dimensions
         file.file.seek(0)
         file_content = await file.read()
         
-        # Get YOLOv8 prediction
-        prediction_result = fracture_predictor.predict(file_content)
+        # Get basic image info without running prediction
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(file_content))
+        width, height = img.size
         
-        # Create prediction record
+        # Create prediction record without AI results
         db_prediction = FracturePrediction(
             user_id=current_user.id,
             image_filename=file.filename,
             image_path=file_path,
             image_size=len(file_content),
-            image_width=prediction_result["image_dimensions"]["width"],
-            image_height=prediction_result["image_dimensions"]["height"],
+            image_width=width,
+            image_height=height,
             image_format=os.path.splitext(file.filename)[1][1:].lower(),
-            has_fracture=prediction_result["has_fracture"],
-            detection_count=prediction_result["detection_count"],
-            max_confidence=prediction_result["max_confidence"],
+            has_student_predictions=False,
+            has_ai_predictions=False,
+            student_prediction_count=0,
+            ai_prediction_count=0,
             model_version="YOLOv8",
-            inference_time=prediction_result["inference_time"],
             confidence_threshold=fracture_predictor.confidence_threshold
         )
         
@@ -97,11 +107,113 @@ async def predict_fracture(
         db.commit()
         db.refresh(db_prediction)
         
-        # Save individual detections
+        return db_prediction
+        
+    except Exception as e:
+        if 'file_path' in locals() and os.path.exists(file_path):
+            os.remove(file_path)
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Upload failed: {str(e)}"
+        )
+
+@router.post("/predictions/{prediction_id}/student-annotations")
+async def submit_student_annotations(
+    prediction_id: int,
+    annotations: StudentAnnotationsSubmit,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Submit student annotations for a prediction"""
+    prediction = db.query(FracturePrediction).filter(FracturePrediction.id == prediction_id).first()
+    
+    if not prediction:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prediction not found")
+    
+    if prediction.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    
+    try:
+        # Remove existing student annotations
+        db.query(FractureDetection).filter(
+            FractureDetection.prediction_id == prediction_id,
+            FractureDetection.source == PredictionSource.STUDENT
+        ).delete()
+        
+        # Add new student annotations
+        for annotation in annotations.annotations:
+            db_detection = FractureDetection(
+                prediction_id=prediction_id,
+                source=PredictionSource.STUDENT,
+                class_id=0,  # Default to fracture
+                class_name="fracture",
+                confidence=None,  # No confidence for student annotations
+                x_min=annotation.x_min,
+                y_min=annotation.y_min,
+                x_max=annotation.x_max,
+                y_max=annotation.y_max,
+                width=annotation.width,
+                height=annotation.height,
+                student_notes=annotation.notes
+            )
+            db.add(db_detection)
+        
+        # Update prediction record
+        prediction.has_student_predictions = len(annotations.annotations) > 0
+        prediction.student_prediction_count = len(annotations.annotations)
+        prediction.student_predictions_at = datetime.utcnow()
+        
+        db.commit()
+        db.refresh(prediction)
+        
+        return {"message": "Student annotations saved successfully", "count": len(annotations.annotations)}
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save annotations: {str(e)}"
+        )
+
+@router.post("/predictions/{prediction_id}/ai-predict", response_model=dict)
+async def run_ai_prediction(
+    prediction_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Run AI prediction on an uploaded image"""
+    prediction = db.query(FracturePrediction).filter(FracturePrediction.id == prediction_id).first()
+    
+    if not prediction:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prediction not found")
+    
+    if prediction.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    
+    if not os.path.exists(prediction.image_path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image file not found")
+    
+    try:
+        # Read image file
+        with open(prediction.image_path, 'rb') as f:
+            file_content = f.read()
+        
+        # Get AI prediction
+        prediction_result = fracture_predictor.predict(file_content)
+        
+        # Remove existing AI predictions
+        db.query(FractureDetection).filter(
+            FractureDetection.prediction_id == prediction_id,
+            FractureDetection.source == PredictionSource.AI
+        ).delete()
+        
+        # Save AI detections
         for detection in prediction_result["detections"]:
             bbox = detection["bounding_box"]
             db_detection = FractureDetection(
-                prediction_id=db_prediction.id,
+                prediction_id=prediction_id,
+                source=PredictionSource.AI,
                 class_id=detection["class_id"],
                 class_name=detection["class_name"],
                 confidence=detection["confidence"],
@@ -114,19 +226,76 @@ async def predict_fracture(
             )
             db.add(db_detection)
         
-        db.commit()
-        db.refresh(db_prediction)
+        # Update prediction record
+        prediction.has_ai_predictions = prediction_result["detection_count"] > 0
+        prediction.ai_prediction_count = prediction_result["detection_count"]
+        prediction.ai_max_confidence = prediction_result["max_confidence"]
+        prediction.ai_inference_time = prediction_result["inference_time"]
+        prediction.ai_predictions_at = datetime.utcnow()
         
-        return db_prediction
+        db.commit()
+        db.refresh(prediction)
+        
+        return {
+            "message": "AI prediction completed successfully",
+            "has_fracture": prediction_result["has_fracture"],
+            "detection_count": prediction_result["detection_count"],
+            "max_confidence": prediction_result["max_confidence"],
+            "inference_time": prediction_result["inference_time"]
+        }
         
     except Exception as e:
-        if 'file_path' in locals() and os.path.exists(file_path):
-            os.remove(file_path)
-        
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Prediction failed: {str(e)}"
+            detail=f"AI prediction failed: {str(e)}"
         )
+
+@router.get("/predictions/{prediction_id}/comparison", response_model=PredictionComparison)
+def get_prediction_comparison(
+    prediction_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get comparison between student and AI predictions"""
+    prediction = db.query(FracturePrediction).filter(FracturePrediction.id == prediction_id).first()
+    
+    if not prediction:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prediction not found")
+    
+    if prediction.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    
+    # Get student and AI detections separately
+    student_detections = db.query(FractureDetection).filter(
+        FractureDetection.prediction_id == prediction_id,
+        FractureDetection.source == PredictionSource.STUDENT
+    ).all()
+    
+    ai_detections = db.query(FractureDetection).filter(
+        FractureDetection.prediction_id == prediction_id,
+        FractureDetection.source == PredictionSource.AI
+    ).all()
+    
+    # Calculate simple comparison metrics
+    comparison_metrics = {
+        "student_count": len(student_detections),
+        "ai_count": len(ai_detections),
+        "both_found_fractures": len(student_detections) > 0 and len(ai_detections) > 0,
+        "student_only": len(student_detections) > 0 and len(ai_detections) == 0,
+        "ai_only": len(student_detections) == 0 and len(ai_detections) > 0,
+        "both_normal": len(student_detections) == 0 and len(ai_detections) == 0
+    }
+    
+    return PredictionComparison(
+        prediction_id=prediction_id,
+        image_filename=prediction.image_filename,
+        student_detections=student_detections,
+        ai_detections=ai_detections,
+        comparison_metrics=comparison_metrics
+    )
+
+# Keep existing endpoints with updated schemas...
 
 @router.post("/test-prediction", response_model=YOLOv8Response)
 async def test_prediction(
@@ -149,14 +318,18 @@ async def test_prediction(
 def get_predictions(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-    has_fracture: Optional[bool] = Query(None),
+    has_student_predictions: Optional[bool] = Query(None),
+    has_ai_predictions: Optional[bool] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     query = db.query(FracturePrediction).filter(FracturePrediction.user_id == current_user.id)
     
-    if has_fracture is not None:
-        query = query.filter(FracturePrediction.has_fracture == has_fracture)
+    if has_student_predictions is not None:
+        query = query.filter(FracturePrediction.has_student_predictions == has_student_predictions)
+    
+    if has_ai_predictions is not None:
+        query = query.filter(FracturePrediction.has_ai_predictions == has_ai_predictions)
     
     predictions = query.order_by(FracturePrediction.created_at.desc()).offset(skip).limit(limit).all()
     
@@ -164,9 +337,11 @@ def get_predictions(
         PredictionSummary(
             id=p.id,
             image_filename=p.image_filename,
-            has_fracture=p.has_fracture,
-            detection_count=p.detection_count,
-            max_confidence=p.max_confidence,
+            has_student_predictions=p.has_student_predictions,
+            has_ai_predictions=p.has_ai_predictions,
+            student_prediction_count=p.student_prediction_count,
+            ai_prediction_count=p.ai_prediction_count,
+            ai_max_confidence=p.ai_max_confidence,
             created_at=p.created_at
         )
         for p in predictions
@@ -241,21 +416,26 @@ def get_user_stats(
 ):
     total = db.query(FracturePrediction).filter(FracturePrediction.user_id == current_user.id).count()
     
-    fracture_count = db.query(FracturePrediction).filter(
+    student_predictions = db.query(FracturePrediction).filter(
         FracturePrediction.user_id == current_user.id,
-        FracturePrediction.has_fracture == True
+        FracturePrediction.has_student_predictions == True
     ).count()
     
-    avg_confidence = db.query(func.avg(FracturePrediction.max_confidence)).filter(
+    ai_predictions = db.query(FracturePrediction).filter(
         FracturePrediction.user_id == current_user.id,
-        FracturePrediction.max_confidence.isnot(None)
+        FracturePrediction.has_ai_predictions == True
+    ).count()
+    
+    avg_confidence = db.query(func.avg(FracturePrediction.ai_max_confidence)).filter(
+        FracturePrediction.user_id == current_user.id,
+        FracturePrediction.ai_max_confidence.isnot(None)
     ).scalar()
     
     return PredictionStats(
         total_predictions=total,
-        fracture_predictions=fracture_count,
-        normal_predictions=total - fracture_count,
-        average_confidence=float(avg_confidence) if avg_confidence else 0.0
+        student_predictions=student_predictions,
+        ai_predictions=ai_predictions,
+        average_ai_confidence=float(avg_confidence) if avg_confidence else 0.0
     )
 
 @router.get("/model-info")

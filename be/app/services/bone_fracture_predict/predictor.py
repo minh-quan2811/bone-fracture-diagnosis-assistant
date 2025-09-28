@@ -44,7 +44,7 @@ class BoneFracturePredictorModel:
     #     }
 
     # Mock prediction function (having prediction)
-    def predict(image_data: bytes) -> dict:
+    def predict(self, image_data: bytes) -> dict:
         return {
             "has_fracture": True,
             "detection_count": 2,

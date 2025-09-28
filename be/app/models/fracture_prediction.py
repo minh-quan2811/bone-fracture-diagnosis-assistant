@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float, Text, DateTime, ForeignKey, Boolean, func
+from sqlalchemy import Column, Integer, String, Float, Text, DateTime, ForeignKey, Boolean, func, Enum
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+from app.enums.prediction_source import PredictionSource
 
 class FracturePrediction(Base):
     __tablename__ = "fracture_predictions"
@@ -16,18 +17,22 @@ class FracturePrediction(Base):
     image_height = Column(Integer, nullable=True)
     image_format = Column(String(10), nullable=True)
     
-    # YOLOv8 Results
-    has_fracture = Column(Boolean, default=False)
-    detection_count = Column(Integer, default=0)
-    max_confidence = Column(Float, nullable=True)
+    # Overall prediction status
+    has_student_predictions = Column(Boolean, default=False)
+    has_ai_predictions = Column(Boolean, default=False)
+    student_prediction_count = Column(Integer, default=0)
+    ai_prediction_count = Column(Integer, default=0)
     
-    # Model Information
+    # AI Model Information
     model_version = Column(String(50), default="YOLOv8")
-    inference_time = Column(Float, nullable=True)
+    ai_inference_time = Column(Float, nullable=True)
     confidence_threshold = Column(Float, default=0.25)
+    ai_max_confidence = Column(Float, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    student_predictions_at = Column(DateTime(timezone=True), nullable=True)
+    ai_predictions_at = Column(DateTime(timezone=True), nullable=True)
     
     # Relationships
     user = relationship("User", backref="fracture_predictions")
@@ -39,10 +44,13 @@ class FractureDetection(Base):
     id = Column(Integer, primary_key=True, index=True)
     prediction_id = Column(Integer, ForeignKey("fracture_predictions.id"), nullable=False)
     
-    # YOLOv8 Detection Results
-    class_id = Column(Integer, nullable=False)
-    class_name = Column(String(100), nullable=False)
-    confidence = Column(Float, nullable=False)
+    # Source of the detection (student or AI)
+    source = Column(Enum(PredictionSource), nullable=False)
+    
+    # Detection Results
+    class_id = Column(Integer, nullable=False, default=0)  # 0 for fracture
+    class_name = Column(String(100), nullable=False, default="fracture")
+    confidence = Column(Float, nullable=True)  # Nullable for student annotations
     
     # Bounding box coordinates
     x_min = Column(Integer, nullable=False)
@@ -51,6 +59,9 @@ class FractureDetection(Base):
     y_max = Column(Integer, nullable=False)
     width = Column(Integer, nullable=False)
     height = Column(Integer, nullable=False)
+    
+    # Student annotation metadata
+    student_notes = Column(Text, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
