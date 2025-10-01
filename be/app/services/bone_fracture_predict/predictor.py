@@ -47,7 +47,7 @@ class BoneFracturePredictorModel:
     def predict(self, image_data: bytes) -> dict:
         return {
             "has_fracture": True,
-            "detection_count": 3,
+            "detection_count": 2,
             "max_confidence": 0.92,
             "detections": [
                 {
@@ -78,21 +78,6 @@ class BoneFracturePredictorModel:
                         "y_max": 450,
                         "width": 200,
                         "height": 300
-                    }
-                },
-                {
-                    "class_id": 0,
-                    "class_name": "fracture",
-                    "confidence": 0.78,
-                    "fracture_type": "greenstick",
-                    "body_region": "wrist",
-                    "bounding_box": {
-                        "x_min": 650,
-                        "y_min": 100,
-                        "x_max": 820,
-                        "y_max": 280,
-                        "width": 170,
-                        "height": 180
                     }
                 }
             ],

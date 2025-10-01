@@ -10,6 +10,8 @@ interface Detection {
   confidence?: number;
   color: string;
   source: 'student' | 'ai';
+  fracture_type?: string;
+  body_region?: string;
 }
 
 interface DetectionListsProps {
@@ -30,13 +32,29 @@ export function DetectionLists({ detections }: DetectionListsProps) {
           <h4 className="font-medium text-blue-900 mb-2 text-sm">
             🎓 Your Predictions ({studentDetections.length})
           </h4>
-          <div className="space-y-1 max-h-20 overflow-y-auto">
-            {studentDetections.map((detection) => (
+          <div className="space-y-2 max-h-32 overflow-y-auto">
+            {studentDetections.map((detection, index) => (
               <div key={detection.id} className="text-xs p-2 bg-blue-100 rounded">
-                <div className="font-medium">{detection.label}</div>
-                <div className="text-blue-700">
-                  Position: ({Math.round(detection.x)}, {Math.round(detection.y)}) 
-                  Size: {Math.round(detection.width)}×{Math.round(detection.height)}
+                <div className="font-medium">Detection #{index + 1}</div>
+                <div className="text-blue-700 mt-1 space-y-1">
+                  {detection.body_region && (
+                    <div className="flex items-center gap-1">
+                      <span>📍</span>
+                      <span className="font-medium">Body Region:</span>
+                      <span className="capitalize">{detection.body_region}</span>
+                    </div>
+                  )}
+                  {detection.fracture_type && (
+                    <div className="flex items-center gap-1">
+                      <span>🔍</span>
+                      <span className="font-medium">Fracture Type:</span>
+                      <span className="capitalize">{detection.fracture_type}</span>
+                    </div>
+                  )}
+                  <div className="text-blue-600">
+                    Position: ({Math.round(detection.x)}, {Math.round(detection.y)}) • 
+                    Size: {Math.round(detection.width)}×{Math.round(detection.height)}
+                  </div>
                 </div>
               </div>
             ))}
@@ -50,16 +68,36 @@ export function DetectionLists({ detections }: DetectionListsProps) {
           <h4 className="font-medium text-red-900 mb-2 text-sm">
             🤖 AI Predictions ({aiDetections.length})
           </h4>
-          <div className="space-y-1 max-h-20 overflow-y-auto">
-            {aiDetections.map((detection) => (
+          <div className="space-y-2 max-h-32 overflow-y-auto">
+            {aiDetections.map((detection, index) => (
               <div key={detection.id} className="text-xs p-2 bg-red-100 rounded">
-                <div className="font-medium">{detection.label}</div>
-                <div className="text-red-700">
-                  Confidence: {detection.confidence ? (detection.confidence * 100).toFixed(1) + '%' : 'N/A'}
-                </div>
-                <div className="text-red-700">
-                  Position: ({Math.round(detection.x)}, {Math.round(detection.y)}) 
-                  Size: {Math.round(detection.width)}×{Math.round(detection.height)}
+                <div className="font-medium">Detection #{index + 1}</div>
+                <div className="text-red-700 mt-1 space-y-1">
+                  {detection.confidence && (
+                    <div className="flex items-center gap-1">
+                      <span>🎯</span>
+                      <span className="font-medium">Confidence:</span>
+                      <span>{(detection.confidence * 100).toFixed(1)}%</span>
+                    </div>
+                  )}
+                  {detection.body_region && (
+                    <div className="flex items-center gap-1">
+                      <span>📍</span>
+                      <span className="font-medium">Body Region:</span>
+                      <span className="capitalize">{detection.body_region}</span>
+                    </div>
+                  )}
+                  {detection.fracture_type && (
+                    <div className="flex items-center gap-1">
+                      <span>🔍</span>
+                      <span className="font-medium">Fracture Type:</span>
+                      <span className="capitalize">{detection.fracture_type}</span>
+                    </div>
+                  )}
+                  <div className="text-red-600">
+                    Position: ({Math.round(detection.x)}, {Math.round(detection.y)}) • 
+                    Size: {Math.round(detection.width)}×{Math.round(detection.height)}
+                  </div>
                 </div>
               </div>
             ))}

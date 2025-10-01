@@ -4,6 +4,7 @@ import { useFractureImage } from '@/hooks/useFractureImage';
 import { useAnnotationDrawing } from '@/hooks/useAnnotationDrawing';
 import { useFracturePredictionAPI } from '@/hooks/useFracturePredictionAPI';
 import { AnnotationCanvas, AnnotationCanvasRef } from './AnnotationCanvas';
+import { AnnotationDetailsModal } from './AnnotationDetailsModal';
 import { ImageUploadZone } from './ImageUploadZone';
 import { PredictionResults } from './PredictionResults';
 import { ComparisonResultsCard } from './ComparisonResultsCard';
@@ -35,12 +36,17 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
     isAnnotating,
     isDrawing,
     currentRect,
+    pendingAnnotation,
     setIsAnnotating,
+    updateAnnotation,
     removeAnnotation,
     clearAnnotations,
     handleMouseDown: onMouseDown,
     handleMouseMove: onMouseMove,
-    handleMouseUp: onMouseUp
+    handleMouseUp: onMouseUp,
+    setPendingAnnotation,
+    confirmPendingAnnotation,
+    cancelPendingAnnotation
   } = useAnnotationDrawing();
 
   const {
@@ -114,9 +120,26 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
     onMouseUp();
   };
 
+  // Handle annotation details save
+  const handleSaveAnnotationDetails = (annotation: any) => {
+    setPendingAnnotation(annotation);
+    confirmPendingAnnotation();
+  };
+
   // Handle submit annotations
   const handleSubmitAnnotations = async () => {
-    if (!currentPrediction) return;
+    if (!currentPrediction || annotations.length === 0) return;
+    
+    // Check if all annotations have required details
+    const missingDetails = annotations.some(
+      ann => !ann.body_region || !ann.fracture_type
+    );
+    
+    if (missingDetails) {
+      setError('Please provide body region and fracture type for all annotations');
+      return;
+    }
+    
     await submitAnnotationsAPI(currentPrediction.id, annotations, token);
     clearAnnotations();
   };
@@ -159,8 +182,23 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
 
   const comparisonSummary = getComparisonSummary();
 
+  // Check if all annotations have details
+  const allAnnotationsHaveDetails = annotations.every(
+    ann => ann.body_region && ann.fracture_type
+  );
+
   return (
     <div className="h-full bg-white border-l border-gray-200 flex flex-col overflow-hidden">
+      {/* Annotation Details Modal */}
+      {pendingAnnotation && (
+        <AnnotationDetailsModal
+          annotation={pendingAnnotation}
+          isOpen={!!pendingAnnotation}
+          onClose={cancelPendingAnnotation}
+          onSave={handleSaveAnnotationDetails}
+        />
+      )}
+
       {/* Header - Fixed at top */}
       <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center justify-between">
@@ -223,8 +261,9 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                   {annotations.length > 0 && (
                     <button
                       onClick={handleSubmitAnnotations}
-                      disabled={isSubmittingAnnotations}
+                      disabled={isSubmittingAnnotations || !allAnnotationsHaveDetails}
                       className="px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:bg-gray-400"
+                      title={!allAnnotationsHaveDetails ? 'All annotations need body region and fracture type' : ''}
                     >
                       {isSubmittingAnnotations ? '⏳' : '✓'} Confirm
                     </button>
@@ -281,7 +320,8 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                   <div className="bg-blue-50 rounded-lg p-3 text-sm">
                     <p className="text-blue-800 font-medium">💡 Annotation Mode Active</p>
                     <p className="text-blue-700 mt-1">
-                      Click and drag on the image to mark fracture areas. Click "Confirm" when done.
+                      Click and drag on the image to mark fracture areas. 
+                      You'll be asked to specify body region and fracture type for each annotation.
                     </p>
                   </div>
                 )}
@@ -289,22 +329,56 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                 {/* Draft Annotations List */}
                 {annotations.length > 0 && (
                   <div className="bg-blue-50 rounded-lg p-3">
-                    <h4 className="font-medium text-blue-900 mb-2 text-sm">
-                      Draft Annotations ({annotations.length})
-                    </h4>
-                    <div className="space-y-2 max-h-24 overflow-y-auto">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-blue-900 text-sm">
+                        Draft Annotations ({annotations.length})
+                      </h4>
+                      {!allAnnotationsHaveDetails && (
+                        <span className="text-xs text-red-600">
+                          ⚠️ Missing details
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
                       {annotations.map((annotation, index) => (
                         <div 
                           key={annotation.id} 
-                          className="flex items-center justify-between text-xs bg-blue-100 rounded p-2"
+                          className="flex items-start justify-between text-xs bg-blue-100 rounded p-2"
                         >
-                          <span>Annotation #{index + 1}</span>
-                          <button
-                            onClick={() => removeAnnotation(annotation.id)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            ✕
-                          </button>
+                          <div className="flex-1">
+                            <div className="font-medium">Annotation #{index + 1}</div>
+                            {annotation.body_region && annotation.fracture_type ? (
+                              <div className="text-blue-700 mt-1">
+                                <div>📍 {annotation.body_region}</div>
+                                <div>🔍 {annotation.fracture_type}</div>
+                                {annotation.notes && (
+                                  <div className="text-blue-600 italic mt-1">
+                                    "{annotation.notes}"
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-red-600 mt-1">
+                                ⚠️ Missing details
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-1 ml-2">
+                            {(!annotation.body_region || !annotation.fracture_type) && (
+                              <button
+                                onClick={() => setPendingAnnotation(annotation)}
+                                className="text-blue-600 hover:text-blue-800 text-xs"
+                              >
+                                ✏️ Edit
+                              </button>
+                            )}
+                            <button
+                              onClick={() => removeAnnotation(annotation.id)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              ✕
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
