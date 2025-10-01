@@ -1,5 +1,3 @@
-# File: be/app/api/fracture_prediction.py
-
 import os
 import shutil
 import time
@@ -15,6 +13,8 @@ from app.api.auth import get_current_user
 from app.models.user import User
 from app.models.fracture_prediction import FracturePrediction, FractureDetection
 from app.enums.prediction_source import PredictionSource
+from app.enums.fracture_type import FractureType
+from app.enums.body_region import BodyRegion
 from app.schemas.fracture_prediction import (
     FracturePredictionOut,
     PredictionSummary,
@@ -146,9 +146,11 @@ async def submit_student_annotations(
             db_detection = FractureDetection(
                 prediction_id=prediction_id,
                 source=PredictionSource.STUDENT,
-                class_id=0,  # Default to fracture
+                class_id=0, # Assuming 'fracture' is class_id 0 for student annotations
                 class_name="fracture",
-                confidence=None,  # No confidence for student annotations
+                confidence=None, # Student annotations typically don't have a confidence score
+                fracture_type=annotation.fracture_type,
+                body_region=annotation.body_region,
                 x_min=annotation.x_min,
                 y_min=annotation.y_min,
                 x_max=annotation.x_max,
@@ -217,6 +219,8 @@ async def run_ai_prediction(
                 class_id=detection["class_id"],
                 class_name=detection["class_name"],
                 confidence=detection["confidence"],
+                fracture_type=detection.get("fracture_type"),
+                body_region=detection.get("body_region"),
                 x_min=bbox["x_min"],
                 y_min=bbox["y_min"],
                 x_max=bbox["x_max"],
@@ -277,14 +281,18 @@ def get_prediction_comparison(
         FractureDetection.source == PredictionSource.AI
     ).all()
     
-    # Calculate simple comparison metrics
+    # Calculate comparison metrics
     comparison_metrics = {
         "student_count": len(student_detections),
         "ai_count": len(ai_detections),
         "both_found_fractures": len(student_detections) > 0 and len(ai_detections) > 0,
         "student_only": len(student_detections) > 0 and len(ai_detections) == 0,
         "ai_only": len(student_detections) == 0 and len(ai_detections) > 0,
-        "both_normal": len(student_detections) == 0 and len(ai_detections) == 0
+        "both_normal": len(student_detections) == 0 and len(ai_detections) == 0,
+        "fracture_type_matches": sum(1 for s in student_detections for a in ai_detections 
+                                     if s.fracture_type and a.fracture_type and s.fracture_type == a.fracture_type),
+        "body_region_matches": sum(1 for s in student_detections for a in ai_detections 
+                                   if s.body_region and a.body_region and s.body_region == a.body_region)
     }
     
     return PredictionComparison(
@@ -295,13 +303,12 @@ def get_prediction_comparison(
         comparison_metrics=comparison_metrics
     )
 
-# Keep existing endpoints with updated schemas...
-
 @router.post("/test-prediction", response_model=YOLOv8Response)
 async def test_prediction(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user)
 ):
+    """Run a test AI prediction on an image without saving to the database."""
     validate_image_file(file)
     
     try:
@@ -323,6 +330,7 @@ def get_predictions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    """Get a list of fracture predictions for the current user."""
     query = db.query(FracturePrediction).filter(FracturePrediction.user_id == current_user.id)
     
     if has_student_predictions is not None:
@@ -353,6 +361,7 @@ def get_prediction_details(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    """Get details of a specific fracture prediction."""
     prediction = db.query(FracturePrediction).filter(FracturePrediction.id == prediction_id).first()
     
     if not prediction:
@@ -369,6 +378,7 @@ def get_prediction_image(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    """Retrieve the uploaded image for a prediction."""
     prediction = db.query(FracturePrediction).filter(FracturePrediction.id == prediction_id).first()
     
     if not prediction:
@@ -388,6 +398,7 @@ def delete_prediction(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    """Delete a fracture prediction and its associated image file."""
     prediction = db.query(FracturePrediction).filter(FracturePrediction.id == prediction_id).first()
     
     if not prediction:
@@ -401,9 +412,12 @@ def delete_prediction(
         try:
             os.remove(prediction.image_path)
         except Exception as e:
-            print(f"Warning: Could not delete image file: {e}")
+            print(f"Warning: Could not delete image file: {e}") # Log warning, don't block deletion
     
-    # Delete database records
+    # Delete associated fracture detections first (due to foreign key constraints)
+    db.query(FractureDetection).filter(FractureDetection.prediction_id == prediction_id).delete()
+    
+    # Delete the prediction record
     db.delete(prediction)
     db.commit()
     
@@ -414,6 +428,7 @@ def get_user_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    """Get statistics about the current user's predictions."""
     total = db.query(FracturePrediction).filter(FracturePrediction.user_id == current_user.id).count()
     
     student_predictions = db.query(FracturePrediction).filter(
@@ -431,13 +446,38 @@ def get_user_stats(
         FracturePrediction.ai_max_confidence.isnot(None)
     ).scalar()
     
+    # Get fracture type distribution
+    fracture_types = db.query(
+        FractureDetection.fracture_type,
+        func.count(FractureDetection.id)
+    ).join(FracturePrediction).filter(
+        FracturePrediction.user_id == current_user.id,
+        FractureDetection.fracture_type.isnot(None)
+    ).group_by(FractureDetection.fracture_type).all()
+    
+    fracture_types_dist = {str(ft): count for ft, count in fracture_types} if fracture_types else {}
+    
+    # Get body region distribution
+    body_regions = db.query(
+        FractureDetection.body_region,
+        func.count(FractureDetection.id)
+    ).join(FracturePrediction).filter(
+        FracturePrediction.user_id == current_user.id,
+        FractureDetection.body_region.isnot(None)
+    ).group_by(FractureDetection.body_region).all()
+    
+    body_regions_dist = {str(br): count for br, count in body_regions} if body_regions else {}
+    
     return PredictionStats(
         total_predictions=total,
         student_predictions=student_predictions,
         ai_predictions=ai_predictions,
-        average_ai_confidence=float(avg_confidence) if avg_confidence else 0.0
+        average_ai_confidence=float(avg_confidence) if avg_confidence else 0.0,
+        fracture_types_distribution=fracture_types_dist,
+        body_regions_distribution=body_regions_dist
     )
 
 @router.get("/model-info")
 def get_model_info(current_user: User = Depends(get_current_user)):
+    """Get information about the underlying AI model."""
     return fracture_predictor.get_model_info()

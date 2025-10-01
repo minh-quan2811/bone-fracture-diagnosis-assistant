@@ -2,6 +2,8 @@ from sqlalchemy import Column, Integer, String, Float, Text, DateTime, ForeignKe
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from app.enums.prediction_source import PredictionSource
+from app.enums.fracture_type import FractureType
+from app.enums.body_region import BodyRegion
 
 class FracturePrediction(Base):
     __tablename__ = "fracture_predictions"
@@ -49,9 +51,15 @@ class FractureDetection(Base):
                     nullable=False)
     
     # Detection Results
-    class_id = Column(Integer, nullable=False, default=0)  # 0 for fracture
-    class_name = Column(String(100), nullable=False, default="fracture")
+    class_id = Column(Integer, nullable=False, default=0)
+    class_name = Column(String(100), nullable=False, default="fracture")  # Keep for backward compatibility
     confidence = Column(Float, nullable=True)  # Nullable for student annotations
+    
+    # Fracture classification
+    fracture_type = Column(Enum(FractureType, name="fracture_type", values_callable=lambda obj: [e.value for e in obj]),
+                          nullable=True)
+    body_region = Column(Enum(BodyRegion, name="body_region", values_callable=lambda obj: [e.value for e in obj]),
+                        nullable=True)
     
     # Bounding box coordinates
     x_min = Column(Integer, nullable=False)

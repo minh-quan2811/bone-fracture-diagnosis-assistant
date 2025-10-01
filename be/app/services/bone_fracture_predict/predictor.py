@@ -29,7 +29,7 @@ class BoneFracturePredictorModel:
     
 ############################### MOCK DATA #############################################
     # Mock prediction function (having no prediction)
-    # def predict(image_data: bytes) -> dict:
+    # def predict(self, image_data: bytes) -> dict:
     #     return {
     #         "has_fracture": False,
     #         "detection_count": 0,
@@ -43,17 +43,19 @@ class BoneFracturePredictorModel:
     #         }
     #     }
 
-    # Mock prediction function (having prediction)
+    # Mock prediction function (having predictions with types and regions)
     def predict(self, image_data: bytes) -> dict:
         return {
             "has_fracture": True,
-            "detection_count": 2,
+            "detection_count": 3,
             "max_confidence": 0.92,
             "detections": [
                 {
                     "class_id": 0,
                     "class_name": "fracture",
                     "confidence": 0.92,
+                    "fracture_type": "transverse",
+                    "body_region": "arm",
                     "bounding_box": {
                         "x_min": 120,
                         "y_min": 200,
@@ -64,9 +66,11 @@ class BoneFracturePredictorModel:
                     }
                 },
                 {
-                    "class_id": 1,
-                    "class_name": "bone",
+                    "class_id": 0,
+                    "class_name": "fracture",
                     "confidence": 0.85,
+                    "fracture_type": "spiral",
+                    "body_region": "leg",
                     "bounding_box": {
                         "x_min": 400,
                         "y_min": 150,
@@ -74,6 +78,21 @@ class BoneFracturePredictorModel:
                         "y_max": 450,
                         "width": 200,
                         "height": 300
+                    }
+                },
+                {
+                    "class_id": 0,
+                    "class_name": "fracture",
+                    "confidence": 0.78,
+                    "fracture_type": "greenstick",
+                    "body_region": "wrist",
+                    "bounding_box": {
+                        "x_min": 650,
+                        "y_min": 100,
+                        "x_max": 820,
+                        "y_max": 280,
+                        "width": 170,
+                        "height": 180
                     }
                 }
             ],
@@ -86,7 +105,7 @@ class BoneFracturePredictorModel:
         }
 #############################################
 
-    # Real prediction function commented out for now
+    # Real prediction function (template for when you have a trained model)
     # def predict(self, image_data: bytes) -> Dict:
     #     try:
     #         # Decode image
@@ -128,10 +147,18 @@ class BoneFracturePredictorModel:
     #                     # Convert coordinates to integers
     #                     x1, y1, x2, y2 = map(int, xyxy)
                         
+    #                     # Extract fracture type and body region from model output
+    #                     # This depends on how your model is trained
+    #                     # Example: if you have multi-output model or use class names
+    #                     fracture_type = self._extract_fracture_type(class_name, cls_id)
+    #                     body_region = self._extract_body_region(class_name, cls_id)
+                        
     #                     detection = {
     #                         "class_id": cls_id,
-    #                         "class_name": class_name,
+    #                         "class_name": "fracture",
     #                         "confidence": conf,
+    #                         "fracture_type": fracture_type,
+    #                         "body_region": body_region,
     #                         "bounding_box": {
     #                             "x_min": x1,
     #                             "y_min": y1,
@@ -161,6 +188,47 @@ class BoneFracturePredictorModel:
     #     except Exception as e:
     #         raise Exception(f"YOLOv8 prediction failed: {str(e)}")
     
+    # def _extract_fracture_type(self, class_name: str, class_id: int) -> str:
+    #     """
+    #     Extract fracture type from class name or ID
+    #     Implement based on your model's class structure
+    #     """
+    #     # Example mappings - adjust based on your model
+    #     fracture_type_map = {
+    #         0: "transverse",
+    #         1: "spiral",
+    #         2: "greenstick",
+    #         3: "comminuted",
+    #         4: "compound",
+    #         5: "oblique",
+    #         6: "compression",
+    #         7: "avulsion",
+    #         8: "hairline"
+    #     }
+    #     return fracture_type_map.get(class_id)
+    
+    # def _extract_body_region(self, class_name: str, class_id: int) -> str:
+    #     """
+    #     Extract body region from class name or ID
+    #     Implement based on your model's class structure
+    #     """
+    #     # Example: if class names include region info
+    #     # Or use a separate classification model/logic
+    #     region_keywords = {
+    #         "arm": "arm",
+    #         "leg": "leg",
+    #         "hand": "hand",
+    #         "foot": "foot",
+    #         "wrist": "wrist",
+    #         "ankle": "ankle"
+    #     }
+    #     
+    #     for keyword, region in region_keywords.items():
+    #         if keyword in class_name.lower():
+    #             return region
+    #     
+    #     return None
+    
     def predict_from_file(self, file_path: str) -> Dict:
         try:
             with open(file_path, 'rb') as f:
@@ -174,7 +242,15 @@ class BoneFracturePredictorModel:
             "model_path": self.model_path,
             "confidence_threshold": self.confidence_threshold,
             "iou_threshold": self.iou_threshold,
-            "classes": self.model.names if self.model else {}
+            "classes": self.model.names if self.model else {},
+            "supported_fracture_types": [
+                "greenstick", "transverse", "comminuted", "spiral", 
+                "compound", "oblique", "compression", "avulsion", "hairline"
+            ],
+            "supported_body_regions": [
+                "arm", "leg", "hand", "foot", "shoulder", "hip", 
+                "spine", "ribs", "skull", "pelvis", "wrist", "ankle", "elbow", "knee"
+            ]
         }
 
 # Initialize the predictor instance

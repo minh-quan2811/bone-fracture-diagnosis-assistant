@@ -2,6 +2,8 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 from app.enums.prediction_source import PredictionSource
+from app.enums.fracture_type import FractureType
+from app.enums.body_region import BodyRegion
 
 class BoundingBox(BaseModel):
     x_min: int
@@ -15,6 +17,8 @@ class DetectionResult(BaseModel):
     class_id: int
     class_name: str
     confidence: float = Field(..., ge=0.0, le=1.0)
+    fracture_type: Optional[FractureType] = None
+    body_region: Optional[BodyRegion] = None
     bounding_box: BoundingBox
 
 class StudentAnnotation(BaseModel):
@@ -24,6 +28,8 @@ class StudentAnnotation(BaseModel):
     y_max: int
     width: int
     height: int
+    fracture_type: Optional[FractureType] = None
+    body_region: Optional[BodyRegion] = None
     notes: Optional[str] = None
 
 class StudentAnnotationsSubmit(BaseModel):
@@ -36,6 +42,8 @@ class FractureDetectionOut(BaseModel):
     class_id: int
     class_name: str
     confidence: Optional[float]
+    fracture_type: Optional[FractureType]
+    body_region: Optional[BodyRegion]
     x_min: int
     y_min: int
     x_max: int
@@ -96,6 +104,8 @@ class PredictionStats(BaseModel):
     student_predictions: int
     ai_predictions: int
     average_ai_confidence: float
+    fracture_types_distribution: Optional[dict] = None
+    body_regions_distribution: Optional[dict] = None
 
 class PredictionComparison(BaseModel):
     prediction_id: int

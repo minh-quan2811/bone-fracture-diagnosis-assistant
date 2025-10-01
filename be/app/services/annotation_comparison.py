@@ -103,7 +103,9 @@ class AnnotationComparison:
                             'ai_detection': ai_det,
                             'iou': iou,
                             'distance': distance,
-                            'score': score
+                            'score': score,
+                            'fracture_type_match': student_det.fracture_type == ai_det.fracture_type if (student_det.fracture_type and ai_det.fracture_type) else None,
+                            'body_region_match': student_det.body_region == ai_det.body_region if (student_det.body_region and ai_det.body_region) else None
                         }
             
             if best_match:
@@ -124,6 +126,10 @@ class AnnotationComparison:
             if i not in ai_matched
         ]
         
+        # Calculate classification accuracy
+        fracture_type_correct = sum(1 for m in matches if m.get('fracture_type_match') == True)
+        body_region_correct = sum(1 for m in matches if m.get('body_region_match') == True)
+        
         return {
             'matches': matches,
             'unmatched_student': unmatched_student,
@@ -132,7 +138,9 @@ class AnnotationComparison:
             'student_count': len(student_detections),
             'ai_count': len(ai_detections),
             'precision': len(matches) / len(student_detections) if student_detections else 1.0,
-            'recall': len(matches) / len(ai_detections) if ai_detections else 1.0
+            'recall': len(matches) / len(ai_detections) if ai_detections else 1.0,
+            'fracture_type_accuracy': fracture_type_correct / len(matches) if matches else 0.0,
+            'body_region_accuracy': body_region_correct / len(matches) if matches else 0.0
         }
     
     @classmethod
@@ -149,7 +157,7 @@ class AnnotationComparison:
             iou_threshold: IoU threshold for considering a match
             
         Returns:
-            Dictionary containing precision, recall, F1-score
+            Dictionary containing precision, recall, F1-score and classification accuracy
         """
         matches = cls.find_matches(student_detections, ai_detections, iou_threshold)
         
@@ -167,7 +175,9 @@ class AnnotationComparison:
             'f1_score': f1_score,
             'true_positives': true_positives,
             'false_positives': false_positives,
-            'false_negatives': false_negatives
+            'false_negatives': false_negatives,
+            'fracture_type_accuracy': matches['fracture_type_accuracy'],
+            'body_region_accuracy': matches['body_region_accuracy']
         }
     
     @classmethod
@@ -219,6 +229,12 @@ class AnnotationComparison:
         if metrics['recall'] >= 0.8:
             feedback['strengths'].append("High recall - detected most of the fractures")
         
+        if metrics['fracture_type_accuracy'] >= 0.8:
+            feedback['strengths'].append(f"Excellent fracture type classification ({metrics['fracture_type_accuracy']:.0%} accuracy)")
+        
+        if metrics['body_region_accuracy'] >= 0.8:
+            feedback['strengths'].append(f"Excellent body region identification ({metrics['body_region_accuracy']:.0%} accuracy)")
+        
         # Identify areas for improvement
         if matches['unmatched_student']:
             feedback['improvements'].append(f"Consider reviewing {len(matches['unmatched_student'])} potential false positive(s)")
@@ -232,6 +248,12 @@ class AnnotationComparison:
         if metrics['recall'] < 0.6:
             feedback['improvements'].append("Focus on identifying more subtle fractures")
         
+        if metrics['fracture_type_accuracy'] < 0.6 and match_count > 0:
+            feedback['improvements'].append("Review fracture type classification - study different fracture patterns")
+        
+        if metrics['body_region_accuracy'] < 0.6 and match_count > 0:
+            feedback['improvements'].append("Improve body region identification - review anatomical landmarks")
+        
         # Generate suggestions
         if student_count > ai_count * 2:
             feedback['suggestions'].append("You may be over-detecting. Look for clear fracture lines and discontinuities.")
@@ -243,5 +265,14 @@ class AnnotationComparison:
             avg_iou = sum(match['iou'] for match in matches['matches']) / len(matches['matches'])
             if avg_iou < 0.5:
                 feedback['suggestions'].append("Work on more precise localization of fracture boundaries.")
+        
+        # Classification-specific suggestions
+        fracture_type_mismatches = sum(1 for m in matches['matches'] if m.get('fracture_type_match') == False)
+        if fracture_type_mismatches > 0:
+            feedback['suggestions'].append(f"Review {fracture_type_mismatches} fracture type misclassification(s). Study fracture patterns: transverse, spiral, comminuted, etc.")
+        
+        body_region_mismatches = sum(1 for m in matches['matches'] if m.get('body_region_match') == False)
+        if body_region_mismatches > 0:
+            feedback['suggestions'].append(f"Review {body_region_mismatches} body region misidentification(s). Study anatomical structures and landmarks.")
         
         return feedback
