@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { uploadFractureImage } from '@/lib/api';
+import { uploadFractureImage } from '@/lib/fracture-api';
 
 interface UseFractureImageReturn {
   image: HTMLImageElement | null;

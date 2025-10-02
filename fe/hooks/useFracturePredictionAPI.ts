@@ -3,7 +3,7 @@ import {
   submitStudentAnnotations, 
   runAiPrediction, 
   getPredictionComparison 
-} from '@/lib/api';
+} from '@/lib/fracture-api';
 
 interface Detection {
   id: number | string;
