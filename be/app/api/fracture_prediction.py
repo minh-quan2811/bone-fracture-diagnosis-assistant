@@ -1,11 +1,9 @@
 import os
 import shutil
 import time
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, Query
-from fastapi.responses import FileResponse
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from datetime import datetime
 
 from app.core.database import get_db
@@ -13,13 +11,8 @@ from app.api.auth import get_current_user
 from app.models.user import User
 from app.models.fracture_prediction import FracturePrediction, FractureDetection
 from app.enums.prediction_source import PredictionSource
-from app.enums.fracture_type import FractureType
-from app.enums.body_region import BodyRegion
 from app.schemas.fracture_prediction import (
     FracturePredictionOut,
-    PredictionSummary,
-    YOLOv8Response,
-    PredictionStats,
     StudentAnnotationsSubmit,
     PredictionComparison
 )
@@ -146,9 +139,9 @@ async def submit_student_annotations(
             db_detection = FractureDetection(
                 prediction_id=prediction_id,
                 source=PredictionSource.STUDENT,
-                class_id=0, # Assuming 'fracture' is class_id 0 for student annotations
+                class_id=0,
                 class_name="fracture",
-                confidence=None, # Student annotations typically don't have a confidence score
+                confidence=None,
                 fracture_type=annotation.fracture_type,
                 body_region=annotation.body_region,
                 x_min=annotation.x_min,
@@ -303,58 +296,6 @@ def get_prediction_comparison(
         comparison_metrics=comparison_metrics
     )
 
-@router.post("/test-prediction", response_model=YOLOv8Response)
-async def test_prediction(
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user)
-):
-    """Run a test AI prediction on an image without saving to the database."""
-    validate_image_file(file)
-    
-    try:
-        file_content = await file.read()
-        result = fracture_predictor.predict(file_content)
-        return YOLOv8Response(**result)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Test prediction failed: {str(e)}"
-        )
-
-@router.get("/predictions", response_model=List[PredictionSummary])
-def get_predictions(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
-    has_student_predictions: Optional[bool] = Query(None),
-    has_ai_predictions: Optional[bool] = Query(None),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Get a list of fracture predictions for the current user."""
-    query = db.query(FracturePrediction).filter(FracturePrediction.user_id == current_user.id)
-    
-    if has_student_predictions is not None:
-        query = query.filter(FracturePrediction.has_student_predictions == has_student_predictions)
-    
-    if has_ai_predictions is not None:
-        query = query.filter(FracturePrediction.has_ai_predictions == has_ai_predictions)
-    
-    predictions = query.order_by(FracturePrediction.created_at.desc()).offset(skip).limit(limit).all()
-    
-    return [
-        PredictionSummary(
-            id=p.id,
-            image_filename=p.image_filename,
-            has_student_predictions=p.has_student_predictions,
-            has_ai_predictions=p.has_ai_predictions,
-            student_prediction_count=p.student_prediction_count,
-            ai_prediction_count=p.ai_prediction_count,
-            ai_max_confidence=p.ai_max_confidence,
-            created_at=p.created_at
-        )
-        for p in predictions
-    ]
-
 @router.get("/predictions/{prediction_id}", response_model=FracturePredictionOut)
 def get_prediction_details(
     prediction_id: int,
@@ -371,113 +312,3 @@ def get_prediction_details(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     
     return prediction
-
-@router.get("/predictions/{prediction_id}/image")
-def get_prediction_image(
-    prediction_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Retrieve the uploaded image for a prediction."""
-    prediction = db.query(FracturePrediction).filter(FracturePrediction.id == prediction_id).first()
-    
-    if not prediction:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prediction not found")
-    
-    if prediction.user_id != current_user.id and not current_user.is_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    
-    if not os.path.exists(prediction.image_path):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image file not found")
-    
-    return FileResponse(prediction.image_path, media_type="image/jpeg", filename=prediction.image_filename)
-
-@router.delete("/predictions/{prediction_id}")
-def delete_prediction(
-    prediction_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Delete a fracture prediction and its associated image file."""
-    prediction = db.query(FracturePrediction).filter(FracturePrediction.id == prediction_id).first()
-    
-    if not prediction:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prediction not found")
-    
-    if prediction.user_id != current_user.id and not current_user.is_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    
-    # Delete image file
-    if os.path.exists(prediction.image_path):
-        try:
-            os.remove(prediction.image_path)
-        except Exception as e:
-            print(f"Warning: Could not delete image file: {e}") # Log warning, don't block deletion
-    
-    # Delete associated fracture detections first (due to foreign key constraints)
-    db.query(FractureDetection).filter(FractureDetection.prediction_id == prediction_id).delete()
-    
-    # Delete the prediction record
-    db.delete(prediction)
-    db.commit()
-    
-    return {"message": "Prediction deleted successfully"}
-
-@router.get("/stats", response_model=PredictionStats)
-def get_user_stats(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Get statistics about the current user's predictions."""
-    total = db.query(FracturePrediction).filter(FracturePrediction.user_id == current_user.id).count()
-    
-    student_predictions = db.query(FracturePrediction).filter(
-        FracturePrediction.user_id == current_user.id,
-        FracturePrediction.has_student_predictions == True
-    ).count()
-    
-    ai_predictions = db.query(FracturePrediction).filter(
-        FracturePrediction.user_id == current_user.id,
-        FracturePrediction.has_ai_predictions == True
-    ).count()
-    
-    avg_confidence = db.query(func.avg(FracturePrediction.ai_max_confidence)).filter(
-        FracturePrediction.user_id == current_user.id,
-        FracturePrediction.ai_max_confidence.isnot(None)
-    ).scalar()
-    
-    # Get fracture type distribution
-    fracture_types = db.query(
-        FractureDetection.fracture_type,
-        func.count(FractureDetection.id)
-    ).join(FracturePrediction).filter(
-        FracturePrediction.user_id == current_user.id,
-        FractureDetection.fracture_type.isnot(None)
-    ).group_by(FractureDetection.fracture_type).all()
-    
-    fracture_types_dist = {str(ft): count for ft, count in fracture_types} if fracture_types else {}
-    
-    # Get body region distribution
-    body_regions = db.query(
-        FractureDetection.body_region,
-        func.count(FractureDetection.id)
-    ).join(FracturePrediction).filter(
-        FracturePrediction.user_id == current_user.id,
-        FractureDetection.body_region.isnot(None)
-    ).group_by(FractureDetection.body_region).all()
-    
-    body_regions_dist = {str(br): count for br, count in body_regions} if body_regions else {}
-    
-    return PredictionStats(
-        total_predictions=total,
-        student_predictions=student_predictions,
-        ai_predictions=ai_predictions,
-        average_ai_confidence=float(avg_confidence) if avg_confidence else 0.0,
-        fracture_types_distribution=fracture_types_dist,
-        body_regions_distribution=body_regions_dist
-    )
-
-@router.get("/model-info")
-def get_model_info(current_user: User = Depends(get_current_user)):
-    """Get information about the underlying AI model."""
-    return fracture_predictor.get_model_info()

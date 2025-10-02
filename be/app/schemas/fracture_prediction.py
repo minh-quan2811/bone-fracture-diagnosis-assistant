@@ -81,32 +81,6 @@ class FracturePredictionOut(BaseModel):
     class Config:
         from_attributes = True
 
-class PredictionSummary(BaseModel):
-    id: int
-    image_filename: str
-    has_student_predictions: bool
-    has_ai_predictions: bool
-    student_prediction_count: int
-    ai_prediction_count: int
-    ai_max_confidence: Optional[float]
-    created_at: datetime
-
-class YOLOv8Response(BaseModel):
-    has_fracture: bool
-    detection_count: int
-    max_confidence: Optional[float]
-    detections: List[DetectionResult]
-    inference_time: float
-    image_dimensions: dict
-
-class PredictionStats(BaseModel):
-    total_predictions: int
-    student_predictions: int
-    ai_predictions: int
-    average_ai_confidence: float
-    fracture_types_distribution: Optional[dict] = None
-    body_regions_distribution: Optional[dict] = None
-
 class PredictionComparison(BaseModel):
     prediction_id: int
     image_filename: str
