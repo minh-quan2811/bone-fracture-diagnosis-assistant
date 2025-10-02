@@ -1,15 +1,5 @@
 import React from 'react';
-
-interface StudentAnnotation {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  notes?: string;
-  fracture_type?: string;
-  body_region?: string;
-}
+import { StudentAnnotation } from '../../types/fracture';
 
 interface AnnotationAttributeSelectorProps {
   annotations: StudentAnnotation[];

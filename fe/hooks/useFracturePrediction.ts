@@ -1,48 +1,5 @@
 import { useState, useCallback } from 'react';
-
-interface StudentAnnotation {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  notes?: string;
-}
-
-interface Detection {
-  id: number | string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  label: string;
-  confidence?: number;
-  color: string;
-  source: 'student' | 'ai';
-}
-
-interface FracturePrediction {
-  id: number;
-  user_id: number;
-  image_filename: string;
-  image_path: string;
-  image_size?: number;
-  image_width?: number;
-  image_height?: number;
-  image_format?: string;
-  has_student_predictions: boolean;
-  has_ai_predictions: boolean;
-  student_prediction_count: number;
-  ai_prediction_count: number;
-  model_version: string;
-  ai_inference_time?: number;
-  confidence_threshold: number;
-  ai_max_confidence?: number;
-  created_at: string;
-  student_predictions_at?: string;
-  ai_predictions_at?: string;
-  detections: any[];
-}
+import { StudentAnnotation, Detection, FracturePrediction } from '../types/fracture';
 
 interface UseFracturePredictionReturn {
   // State

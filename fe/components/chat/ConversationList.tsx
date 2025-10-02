@@ -1,15 +1,11 @@
 import { ConversationItem } from "./ConversationItem";
+import { ConversationBase } from '@/types';
 
-interface Conversation {
-  id: number;
-  title: string;
-  created_at: string;
-}
 
 interface ConversationListProps {
-  conversations: Conversation[];
+  conversations: ConversationBase[];
   activeConversationId: number | null;
-  onSelectConversation: (conversation: Conversation) => void;
+  onSelectConversation: (conversation: ConversationBase) => void;
 }
 
 export function ConversationList({ 

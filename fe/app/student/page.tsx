@@ -13,7 +13,6 @@ import {
 import { Message, Conversation, ConversationBase, User } from "@/types";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ChatSidebar } from "@/components/layout/ChatSidebar";
-import { ChatHeader } from "@/components/layout/ChatHeader";
 import { EmptyChatState } from "@/components/layout/EmptyChatState";
 import { EmptyMessageState } from "@/components/layout/EmptyMessageState";
 import { MessageBubble } from "@/components/chat/MessageBubble";

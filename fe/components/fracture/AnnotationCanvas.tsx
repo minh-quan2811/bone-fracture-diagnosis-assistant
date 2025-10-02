@@ -1,29 +1,5 @@
 import React, { useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
-
-interface StudentAnnotation {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  notes?: string;
-  fracture_type?: string;
-  body_region?: string;
-}
-
-interface Detection {
-  id: number | string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  label: string;
-  confidence?: number;
-  color: string;
-  source: 'student' | 'ai';
-  fracture_type?: string;
-  body_region?: string;
-}
+import { StudentAnnotation, Detection } from '../../types/fracture';
 
 interface AnnotationCanvasProps {
   image: HTMLImageElement | null;

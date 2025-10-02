@@ -4,59 +4,8 @@ import {
   runAiPrediction, 
   getPredictionComparison 
 } from '@/lib/fracture-api';
+import { StudentAnnotation, Detection, PredictionResult, ComparisonResult } from '../types/fracture';
 
-interface Detection {
-  id: number | string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  label: string;
-  confidence?: number;
-  color: string;
-  source: 'student' | 'ai';
-  fracture_type?: string;
-  body_region?: string;
-}
-
-interface StudentAnnotation {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  notes?: string;
-  fracture_type?: string;
-  body_region?: string;
-}
-
-interface PredictionResult {
-  id: number;
-  has_student_predictions: boolean;
-  has_ai_predictions: boolean;
-  student_prediction_count: number;
-  ai_prediction_count: number;
-  ai_max_confidence: number | null;
-  ai_inference_time: number | null;
-  detections: any[];
-}
-
-interface ComparisonResult {
-  prediction_id: number;
-  image_filename: string;
-  student_detections: any[];
-  ai_detections: any[];
-  comparison_metrics: {
-    student_count: number;
-    ai_count: number;
-    both_found_fractures: boolean;
-    student_only: boolean;
-    ai_only: boolean;
-    both_normal: boolean;
-    fracture_type_matches: number;
-    body_region_matches: number;
-  };
-}
 
 interface UseFracturePredictionAPIReturn {
   currentPrediction: PredictionResult | null;

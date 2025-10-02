@@ -1,42 +1,5 @@
 import React from 'react';
-
-interface FractureDetection {
-  id: number;
-  prediction_id: number;
-  source: 'student' | 'ai';
-  class_id: number;
-  class_name: string;
-  confidence: number | null;
-  x_min: number;
-  y_min: number;
-  x_max: number;
-  y_max: number;
-  width: number;
-  height: number;
-  fracture_type?: string;
-  body_region?: string;
-  student_notes?: string;
-  created_at: string;
-}
-
-interface ComparisonMetrics {
-  student_count: number;
-  ai_count: number;
-  both_found_fractures: boolean;
-  student_only: boolean;
-  ai_only: boolean;
-  both_normal: boolean;
-  fracture_type_matches: number;
-  body_region_matches: number;
-}
-
-interface PredictionComparison {
-  prediction_id: number;
-  image_filename: string;
-  student_detections: FractureDetection[];
-  ai_detections: FractureDetection[];
-  comparison_metrics: ComparisonMetrics;
-}
+import { PredictionComparison } from '../../types/fracture';
 
 interface ComparisonResultsCardProps {
   comparison: PredictionComparison | null;

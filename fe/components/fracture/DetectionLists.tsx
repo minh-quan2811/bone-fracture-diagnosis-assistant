@@ -1,18 +1,5 @@
 import React from 'react';
-
-interface Detection {
-  id: number | string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  label: string;
-  confidence?: number;
-  color: string;
-  source: 'student' | 'ai';
-  fracture_type?: string;
-  body_region?: string;
-}
+import { Detection } from '../../types/fracture';
 
 interface DetectionListsProps {
   detections: Detection[];

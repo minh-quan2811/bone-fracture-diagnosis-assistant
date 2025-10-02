@@ -84,3 +84,31 @@ export interface PredictionComparison {
   ai_detections: FractureDetection[];
   comparison_metrics: ComparisonMetrics;
 }
+
+export interface PredictionResult {
+  id: number;
+  has_student_predictions: boolean;
+  has_ai_predictions: boolean;
+  student_prediction_count: number;
+  ai_prediction_count: number;
+  ai_max_confidence: number | null;
+  ai_inference_time: number | null;
+  detections: any[];
+}
+
+export interface ComparisonResult {
+  prediction_id: number;
+  image_filename: string;
+  student_detections: any[];
+  ai_detections: any[];
+  comparison_metrics: {
+    student_count: number;
+    ai_count: number;
+    both_found_fractures: boolean;
+    student_only: boolean;
+    ai_only: boolean;
+    both_normal: boolean;
+    fracture_type_matches: number;
+    body_region_matches: number;
+  };
+}

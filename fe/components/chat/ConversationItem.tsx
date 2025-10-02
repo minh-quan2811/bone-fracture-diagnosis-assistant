@@ -1,11 +1,7 @@
-interface Conversation {
-  id: number;
-  title: string;
-  created_at: string;
-}
+import { ConversationBase } from '@/types';
 
 interface ConversationItemProps {
-  conversation: Conversation;
+  conversation: ConversationBase;
   isActive: boolean;
   onClick: () => void;
 }
