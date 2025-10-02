@@ -75,16 +75,16 @@ export function useAnnotationDrawing(): UseAnnotationDrawingReturn {
       return;
     }
 
-    // Create pending annotation (requires details before confirmation)
+    // Immediately add the annotation to the list (as draft)
     const newAnnotation: StudentAnnotation = {
-      id: `annotation-${Date.now()}`,
+      id: `annotation-${Date.now()}-${Math.random()}`,
       x: currentRect.x,
       y: currentRect.y,
       width: currentRect.width,
       height: currentRect.height
     };
 
-    setPendingAnnotation(newAnnotation);
+    setAnnotations(prev => [...prev, newAnnotation]);
     setCurrentRect(null);
     setIsDrawing(false);
     setStartPoint(null);

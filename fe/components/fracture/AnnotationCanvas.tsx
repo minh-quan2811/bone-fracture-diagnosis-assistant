@@ -7,6 +7,8 @@ interface StudentAnnotation {
   width: number;
   height: number;
   notes?: string;
+  fracture_type?: string;
+  body_region?: string;
 }
 
 interface Detection {
@@ -19,6 +21,8 @@ interface Detection {
   confidence?: number;
   color: string;
   source: 'student' | 'ai';
+  fracture_type?: string;
+  body_region?: string;
 }
 
 interface AnnotationCanvasProps {
@@ -92,13 +96,12 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
     const scaleX = canvasWidth / image.width;
     const scaleY = canvasHeight / image.height;
 
-    // Draw confirmed detections
-    detections.forEach(detection => {
-      if ((detection.source === 'student' && showStudentAnnotations) || 
-          (detection.source === 'ai' && showAiPredictions)) {
+    // Draw confirmed AI detections
+    if (showAiPredictions) {
+      detections.filter(d => d.source === 'ai').forEach(detection => {
         ctx.strokeStyle = detection.color;
-        ctx.lineWidth = 2;
-        ctx.setLineDash(detection.source === 'student' ? [] : [5, 5]);
+        ctx.lineWidth = 3;
+        ctx.setLineDash([5, 5]);
         ctx.strokeRect(
           detection.x * scaleX,
           detection.y * scaleY,
@@ -107,20 +110,51 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
         );
 
         ctx.fillStyle = detection.color;
-        ctx.font = '12px Arial';
+        ctx.font = 'bold 14px Arial';
         ctx.setLineDash([]);
-        const label = detection.confidence 
-          ? `${detection.label} (${(detection.confidence * 100).toFixed(1)}%)`
-          : detection.label;
+        
+        let label = 'AI';
+        if (detection.body_region && detection.fracture_type) {
+          label = `AI: ${detection.body_region} - ${detection.fracture_type}`;
+        }
+        if (detection.confidence) {
+          label += ` (${(detection.confidence * 100).toFixed(1)}%)`;
+        }
+        
         ctx.fillText(label, detection.x * scaleX, detection.y * scaleY - 5);
-      }
-    });
+      });
+    }
 
-    // Draw student annotations being created
+    // Draw confirmed student detections
+    if (showStudentAnnotations) {
+      detections.filter(d => d.source === 'student').forEach(detection => {
+        ctx.strokeStyle = detection.color;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([]);
+        ctx.strokeRect(
+          detection.x * scaleX,
+          detection.y * scaleY,
+          detection.width * scaleX,
+          detection.height * scaleY
+        );
+
+        ctx.fillStyle = detection.color;
+        ctx.font = 'bold 14px Arial';
+        
+        let label = 'Student';
+        if (detection.body_region && detection.fracture_type) {
+          label = `Student: ${detection.body_region} - ${detection.fracture_type}`;
+        }
+        
+        ctx.fillText(label, detection.x * scaleX, detection.y * scaleY - 5);
+      });
+    }
+
+    // Draw draft annotations (not yet confirmed)
     if (showStudentAnnotations) {
       annotations.forEach((annotation, index) => {
         ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.setLineDash([]);
         ctx.strokeRect(
           annotation.x * scaleX,
@@ -130,22 +164,33 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
         );
 
         ctx.fillStyle = '#3b82f6';
-        ctx.font = '12px Arial';
-        ctx.fillText(`Draft #${index + 1}`, annotation.x * scaleX, annotation.y * scaleY - 5);
+        ctx.font = 'bold 14px Arial';
+        
+        let label = `Draft #${index + 1}`;
+        if (annotation.body_region && annotation.fracture_type) {
+          label = `Draft: ${annotation.body_region} - ${annotation.fracture_type}`;
+        }
+        
+        ctx.fillText(label, annotation.x * scaleX, annotation.y * scaleY - 5);
       });
     }
 
     // Draw current rectangle being drawn
     if (currentRect && isDrawing) {
-      ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([5, 5]);
       ctx.strokeRect(
         currentRect.x * scaleX,
         currentRect.y * scaleY,
         currentRect.width * scaleX,
         currentRect.height * scaleY
       );
+      
+      ctx.fillStyle = '#10b981';
+      ctx.font = 'bold 14px Arial';
+      ctx.setLineDash([]);
+      ctx.fillText('Drawing...', currentRect.x * scaleX, currentRect.y * scaleY - 5);
     }
   }, [
     image, 
