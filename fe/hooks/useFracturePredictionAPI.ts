@@ -15,6 +15,8 @@ interface Detection {
   confidence?: number;
   color: string;
   source: 'student' | 'ai';
+  fracture_type?: string;
+  body_region?: string;
 }
 
 interface StudentAnnotation {
@@ -24,6 +26,8 @@ interface StudentAnnotation {
   width: number;
   height: number;
   notes?: string;
+  fracture_type?: string;
+  body_region?: string;
 }
 
 interface PredictionResult {
@@ -49,6 +53,8 @@ interface ComparisonResult {
     student_only: boolean;
     ai_only: boolean;
     both_normal: boolean;
+    fracture_type_matches: number;
+    body_region_matches: number;
   };
 }
 
@@ -95,6 +101,8 @@ export function useFracturePredictionAPI(): UseFracturePredictionAPIReturn {
         y_max: Math.floor(ann.y + ann.height),
         width: Math.floor(ann.width),
         height: Math.floor(ann.height),
+        fracture_type: ann.fracture_type,
+        body_region: ann.body_region,
         notes: ann.notes || ''
       }));
 
@@ -114,9 +122,11 @@ export function useFracturePredictionAPI(): UseFracturePredictionAPIReturn {
         y: ann.y,
         width: ann.width,
         height: ann.height,
-        label: `Student #${index + 1}`,
+        label: `${ann.body_region || 'Unknown'} - ${ann.fracture_type || 'Unknown'}`,
         color: '#3b82f6',
-        source: 'student'
+        source: 'student',
+        fracture_type: ann.fracture_type,
+        body_region: ann.body_region
       }));
 
       setAllDetections(prev => [
@@ -162,10 +172,12 @@ export function useFracturePredictionAPI(): UseFracturePredictionAPIReturn {
           y: detection.y_min,
           width: detection.width,
           height: detection.height,
-          label: `AI #${index + 1}`,
+          label: `AI: ${detection.body_region || 'Unknown'} - ${detection.fracture_type || 'Unknown'}`,
           confidence: detection.confidence,
           color: '#ef4444',
-          source: 'ai' as const
+          source: 'ai' as const,
+          fracture_type: detection.fracture_type,
+          body_region: detection.body_region
         }));
 
       setAllDetections(prev => [

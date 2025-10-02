@@ -7,6 +7,8 @@ interface StudentAnnotation {
   width: number;
   height: number;
   notes?: string;
+  fracture_type?: string;
+  body_region?: string;
 }
 
 interface UseAnnotationDrawingReturn {
@@ -15,13 +17,18 @@ interface UseAnnotationDrawingReturn {
   isDrawing: boolean;
   startPoint: { x: number; y: number } | null;
   currentRect: StudentAnnotation | null;
+  pendingAnnotation: StudentAnnotation | null;
   setIsAnnotating: (value: boolean) => void;
   addAnnotation: (annotation: StudentAnnotation) => void;
+  updateAnnotation: (id: string, updates: Partial<StudentAnnotation>) => void;
   removeAnnotation: (id: string) => void;
   clearAnnotations: () => void;
   handleMouseDown: (x: number, y: number) => void;
   handleMouseMove: (x: number, y: number) => void;
   handleMouseUp: () => void;
+  setPendingAnnotation: (annotation: StudentAnnotation | null) => void;
+  confirmPendingAnnotation: () => void;
+  cancelPendingAnnotation: () => void;
 }
 
 export function useAnnotationDrawing(): UseAnnotationDrawingReturn {
@@ -30,6 +37,7 @@ export function useAnnotationDrawing(): UseAnnotationDrawingReturn {
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
   const [currentRect, setCurrentRect] = useState<StudentAnnotation | null>(null);
+  const [pendingAnnotation, setPendingAnnotation] = useState<StudentAnnotation | null>(null);
 
   const handleMouseDown = useCallback((x: number, y: number) => {
     if (!isAnnotating) return;
@@ -67,13 +75,13 @@ export function useAnnotationDrawing(): UseAnnotationDrawingReturn {
       return;
     }
 
+    // Immediately add the annotation to the list (as draft)
     const newAnnotation: StudentAnnotation = {
-      id: `annotation-${Date.now()}`,
+      id: `annotation-${Date.now()}-${Math.random()}`,
       x: currentRect.x,
       y: currentRect.y,
       width: currentRect.width,
-      height: currentRect.height,
-      notes: ''
+      height: currentRect.height
     };
 
     setAnnotations(prev => [...prev, newAnnotation]);
@@ -82,8 +90,28 @@ export function useAnnotationDrawing(): UseAnnotationDrawingReturn {
     setStartPoint(null);
   }, [isDrawing, currentRect]);
 
+  const confirmPendingAnnotation = useCallback(() => {
+    if (!pendingAnnotation) return;
+    
+    // Only add if it has required details
+    if (pendingAnnotation.body_region && pendingAnnotation.fracture_type) {
+      setAnnotations(prev => [...prev, pendingAnnotation]);
+      setPendingAnnotation(null);
+    }
+  }, [pendingAnnotation]);
+
+  const cancelPendingAnnotation = useCallback(() => {
+    setPendingAnnotation(null);
+  }, []);
+
   const addAnnotation = useCallback((annotation: StudentAnnotation) => {
     setAnnotations(prev => [...prev, annotation]);
+  }, []);
+
+  const updateAnnotation = useCallback((id: string, updates: Partial<StudentAnnotation>) => {
+    setAnnotations(prev => prev.map(ann => 
+      ann.id === id ? { ...ann, ...updates } : ann
+    ));
   }, []);
 
   const removeAnnotation = useCallback((id: string) => {
@@ -95,6 +123,7 @@ export function useAnnotationDrawing(): UseAnnotationDrawingReturn {
     setCurrentRect(null);
     setIsDrawing(false);
     setStartPoint(null);
+    setPendingAnnotation(null);
   }, []);
 
   return {
@@ -103,12 +132,17 @@ export function useAnnotationDrawing(): UseAnnotationDrawingReturn {
     isDrawing,
     startPoint,
     currentRect,
+    pendingAnnotation,
     setIsAnnotating,
     addAnnotation,
+    updateAnnotation,
     removeAnnotation,
     clearAnnotations,
     handleMouseDown,
     handleMouseMove,
-    handleMouseUp
+    handleMouseUp,
+    setPendingAnnotation,
+    confirmPendingAnnotation,
+    cancelPendingAnnotation
   };
 }
