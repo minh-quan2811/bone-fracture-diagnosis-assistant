@@ -1,4 +1,21 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { StudentAnnotation, Detection } from '../../types/fracture';
+
+interface AnnotationCanvasProps {
+  image: HTMLImageElement | null;
+  annotations: StudentAnnotation[];
+  detections: Detection[];
+  currentRect: StudentAnnotation | null;
+  isAnnotating: boolean;
+  showStudentAnnotations: boolean;
+  showAiPredictions: boolean;
+  isDrawing: boolean;
+  onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
+  onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
+  onMouseUp: () => void;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+}
+
 import { User } from '@/types';
 import { useFractureImage } from '@/hooks/useFractureImage';
 import { useAnnotationDrawing } from '@/hooks/useAnnotationDrawing';
@@ -120,26 +137,37 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
   // Handle annotation details save
   const handleSaveAnnotationDetails = (annotation: any) => {
     updateAnnotation(annotation.id, {
-      body_region: annotation.body_region,
       fracture_type: annotation.fracture_type,
       notes: annotation.notes
     });
   };
 
-  // Handle submit annotations
+  // Handle submit annotations (including empty submissions)
   const handleSubmitAnnotations = async () => {
-    if (!currentPrediction || annotations.length === 0) return;
+    if (!currentPrediction) return;
     
-    const missingDetails = annotations.some(
-      ann => !ann.body_region || !ann.fracture_type
-    );
-    
-    if (missingDetails) {
-      setError('Please provide body region and fracture type for all annotations');
-      return;
+    // Check if annotations have required details
+    if (annotations.length > 0) {
+      const missingDetails = annotations.some(ann => !ann.fracture_type);
+      
+      if (missingDetails) {
+        setError('Please select fracture type for all annotations');
+        return;
+      }
     }
     
+    // Allow empty submissions (no fracture detected)
     await submitAnnotationsAPI(currentPrediction.id, annotations, token);
+    clearAnnotations();
+    setIsAnnotating(false);
+  };
+
+  // Handle submit "no fracture" explicitly
+  const handleSubmitNoFracture = async () => {
+    if (!currentPrediction) return;
+    
+    // Submit empty annotations
+    await submitAnnotationsAPI(currentPrediction.id, [], token);
     clearAnnotations();
     setIsAnnotating(false);
   };
@@ -170,8 +198,8 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
   }, [currentPrediction?.has_student_predictions, currentPrediction?.has_ai_predictions, comparison, fetchComparison, token, currentPrediction?.id]);
 
   // Check if all annotations have details
-  const allAnnotationsHaveDetails = annotations.every(
-    ann => ann.body_region && ann.fracture_type
+  const allAnnotationsHaveDetails = annotations.length === 0 || annotations.every(
+    ann => ann.fracture_type
   );
 
   // Determine if we show comparison only
@@ -179,6 +207,9 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
 
   // Collapse state
   const [isCollapsed, setIsCollapsed] = React.useState(false);
+
+  // Check if student can submit
+  const canSubmit = currentPrediction && !currentPrediction.has_student_predictions;
 
   return (
     <div className="h-full bg-white border-l border-gray-200 flex flex-col overflow-hidden">
@@ -256,36 +287,66 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                 <div className="space-y-2">
                   <h4 className="font-semibold text-gray-900 text-sm">Student Actions</h4>
                   
-                  <button
-                    onClick={() => setIsAnnotating(!isAnnotating)}
-                    className={`w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                      isAnnotating 
-                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                        : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                    }`}
-                  >
-                    <span className="text-lg">✏️</span>
-                    {isAnnotating ? 'Stop Annotating' : 'Start Annotating'}
-                  </button>
-
-                  {annotations.length > 0 && (
+                  {/* Show prediction status */}
+                  {currentPrediction?.has_student_predictions && (
+                    <div className="bg-green-50 rounded-lg p-2 border border-green-200">
+                      <p className="text-green-800 text-xs font-medium">
+                        ✅ You've submitted your prediction
+                        {currentPrediction.student_prediction_count === 0 
+                          ? ' (No fractures detected)' 
+                          : ` (${currentPrediction.student_prediction_count} fracture${currentPrediction.student_prediction_count > 1 ? 's' : ''})`
+                        }
+                      </p>
+                    </div>
+                  )}
+                  
+                  {canSubmit && (
                     <>
                       <button
-                        onClick={handleSubmitAnnotations}
-                        disabled={isSubmittingAnnotations || !allAnnotationsHaveDetails}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        onClick={() => setIsAnnotating(!isAnnotating)}
+                        className={`w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                          isAnnotating 
+                            ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                            : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                        }`}
                       >
-                        <span className="text-lg">{isSubmittingAnnotations ? '⏳' : '✅'}</span>
-                        {isSubmittingAnnotations ? 'Submitting...' : `Confirm ${annotations.length} Annotation${annotations.length !== 1 ? 's' : ''}`}
+                        <span className="text-lg">✏️</span>
+                        {isAnnotating ? 'Stop Annotating' : 'Start Annotating'}
                       </button>
 
-                      <button
-                        onClick={clearAnnotations}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500 text-white text-sm font-medium rounded-lg hover:bg-yellow-600 transition-colors"
-                      >
-                        <span className="text-lg">🗑️</span>
-                        Clear Draft Annotations
-                      </button>
+                      {/* Submit with annotations */}
+                      {annotations.length > 0 && (
+                        <>
+                          <button
+                            onClick={handleSubmitAnnotations}
+                            disabled={isSubmittingAnnotations || !allAnnotationsHaveDetails}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <span className="text-lg">{isSubmittingAnnotations ? '⏳' : '✅'}</span>
+                            {isSubmittingAnnotations ? 'Submitting...' : `Confirm ${annotations.length} Fracture${annotations.length !== 1 ? 's' : ''}`}
+                          </button>
+
+                          <button
+                            onClick={clearAnnotations}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500 text-white text-sm font-medium rounded-lg hover:bg-yellow-600 transition-colors"
+                          >
+                            <span className="text-lg">🗑️</span>
+                            Clear Draft
+                          </button>
+                        </>
+                      )}
+
+                      {/* Submit No Fracture button - always visible when no submission yet */}
+                      {annotations.length === 0 && !isAnnotating && (
+                        <button
+                          onClick={handleSubmitNoFracture}
+                          disabled={isSubmittingAnnotations}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <span className="text-lg">{isSubmittingAnnotations ? '⏳' : '🚫'}</span>
+                          {isSubmittingAnnotations ? 'Submitting...' : 'Submit: No Fractures'}
+                        </button>
+                      )}
                     </>
                   )}
 
@@ -343,7 +404,10 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                   <p className="text-blue-900 font-medium text-sm">💡 Annotation Mode Active</p>
                   <p className="text-blue-800 text-sm mt-1">
                     Click and drag on the image to mark fracture areas. 
-                    Fill in body region and fracture type on the right for each annotation.
+                    Select fracture type for each annotation on the right.
+                  </p>
+                  <p className="text-blue-700 text-xs mt-1">
+                    If you don't see any fractures, stop annotating and click "Submit: No Fractures"
                   </p>
                 </div>
               )}

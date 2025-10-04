@@ -72,6 +72,8 @@ export function useAnnotationDrawing(): UseAnnotationDrawingReturn {
       y: currentRect.y,
       width: currentRect.width,
       height: currentRect.height
+      // body_region removed - no longer required
+      // Only fracture_type needs to be filled in later
     };
 
     setAnnotations(prev => [...prev, newAnnotation]);
@@ -83,8 +85,8 @@ export function useAnnotationDrawing(): UseAnnotationDrawingReturn {
   const confirmPendingAnnotation = useCallback(() => {
     if (!pendingAnnotation) return;
     
-    // Only add if it has required details
-    if (pendingAnnotation.body_region && pendingAnnotation.fracture_type) {
+    // Only add if it has required details (fracture_type only, body_region removed)
+    if (pendingAnnotation.fracture_type) {
       setAnnotations(prev => [...prev, pendingAnnotation]);
       setPendingAnnotation(null);
     }

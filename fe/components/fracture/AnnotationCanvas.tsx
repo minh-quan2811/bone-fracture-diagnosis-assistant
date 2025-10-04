@@ -90,8 +90,8 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
         ctx.setLineDash([]);
         
         let label = 'AI';
-        if (detection.body_region && detection.fracture_type) {
-          label = `AI: ${detection.body_region} - ${detection.fracture_type}`;
+        if (detection.fracture_type) {
+          label = `AI: ${detection.fracture_type}`;
         }
         if (detection.confidence) {
           label += ` (${(detection.confidence * 100).toFixed(1)}%)`;
@@ -118,8 +118,8 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
         ctx.font = 'bold 14px Arial';
         
         let label = 'Student';
-        if (detection.body_region && detection.fracture_type) {
-          label = `Student: ${detection.body_region} - ${detection.fracture_type}`;
+        if (detection.fracture_type) {
+          label = `Student: ${detection.fracture_type}`;
         }
         
         ctx.fillText(label, detection.x * scaleX, detection.y * scaleY - 5);
@@ -143,8 +143,8 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
         ctx.font = 'bold 14px Arial';
         
         let label = `Draft #${index + 1}`;
-        if (annotation.body_region && annotation.fracture_type) {
-          label = `Draft: ${annotation.body_region} - ${annotation.fracture_type}`;
+        if (annotation.fracture_type) {
+          label = `Draft: ${annotation.fracture_type}`;
         }
         
         ctx.fillText(label, annotation.x * scaleX, annotation.y * scaleY - 5);

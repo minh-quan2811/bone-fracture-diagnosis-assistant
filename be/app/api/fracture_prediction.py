@@ -17,6 +17,7 @@ from app.schemas.fracture_prediction import (
     PredictionComparison
 )
 from app.services.bone_fracture_predict.predictor import fracture_predictor
+from app.services.bone_fracture_predict.comparison_service import comparison_service
 
 router = APIRouter()
 
@@ -118,7 +119,10 @@ async def submit_student_annotations(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Submit student annotations for a prediction"""
+    """
+    Submit student annotations for a prediction.
+    Allows empty annotations (student predicts no fracture).
+    """
     prediction = db.query(FracturePrediction).filter(FracturePrediction.id == prediction_id).first()
     
     if not prediction:
@@ -134,7 +138,6 @@ async def submit_student_annotations(
             FractureDetection.source == PredictionSource.STUDENT
         ).delete()
         
-        # Add new student annotations
         for annotation in annotations.annotations:
             db_detection = FractureDetection(
                 prediction_id=prediction_id,
@@ -143,7 +146,7 @@ async def submit_student_annotations(
                 class_name="fracture",
                 confidence=None,
                 fracture_type=annotation.fracture_type,
-                body_region=annotation.body_region,
+                # body_region removed
                 x_min=annotation.x_min,
                 y_min=annotation.y_min,
                 x_max=annotation.x_max,
@@ -155,14 +158,24 @@ async def submit_student_annotations(
             db.add(db_detection)
         
         # Update prediction record
-        prediction.has_student_predictions = len(annotations.annotations) > 0
+        prediction.has_student_predictions = True
         prediction.student_prediction_count = len(annotations.annotations)
         prediction.student_predictions_at = datetime.utcnow()
         
         db.commit()
         db.refresh(prediction)
         
-        return {"message": "Student annotations saved successfully", "count": len(annotations.annotations)}
+        message = (
+            f"Student annotations saved: {len(annotations.annotations)} fracture(s) detected" 
+            if len(annotations.annotations) > 0 
+            else "Student prediction saved: No fractures detected"
+        )
+        
+        return {
+            "message": message,
+            "count": len(annotations.annotations),
+            "no_fracture_predicted": len(annotations.annotations) == 0
+        }
         
     except Exception as e:
         db.rollback()
@@ -213,7 +226,7 @@ async def run_ai_prediction(
                 class_name=detection["class_name"],
                 confidence=detection["confidence"],
                 fracture_type=detection.get("fracture_type"),
-                body_region=detection.get("body_region"),
+                # body_region removed
                 x_min=bbox["x_min"],
                 y_min=bbox["y_min"],
                 x_max=bbox["x_max"],
@@ -254,7 +267,9 @@ def get_prediction_comparison(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get comparison between student and AI predictions"""
+    """
+    Get detailed comparison between student and AI predictions using IoU and fracture type matching
+    """
     prediction = db.query(FracturePrediction).filter(FracturePrediction.id == prediction_id).first()
     
     if not prediction:
@@ -262,6 +277,13 @@ def get_prediction_comparison(
     
     if prediction.user_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    
+    # Check if both predictions exist
+    if not prediction.has_student_predictions or not prediction.has_ai_predictions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Both student and AI predictions are required for comparison"
+        )
     
     # Get student and AI detections separately
     student_detections = db.query(FractureDetection).filter(
@@ -274,18 +296,25 @@ def get_prediction_comparison(
         FractureDetection.source == PredictionSource.AI
     ).all()
     
-    # Calculate comparison metrics
-    comparison_metrics = {
-        "student_count": len(student_detections),
-        "ai_count": len(ai_detections),
-        "both_found_fractures": len(student_detections) > 0 and len(ai_detections) > 0,
-        "student_only": len(student_detections) > 0 and len(ai_detections) == 0,
-        "ai_only": len(student_detections) == 0 and len(ai_detections) > 0,
-        "both_normal": len(student_detections) == 0 and len(ai_detections) == 0,
-        "fracture_type_matches": sum(1 for s in student_detections for a in ai_detections 
-                                     if s.fracture_type and a.fracture_type and s.fracture_type == a.fracture_type),
-        "body_region_matches": sum(1 for s in student_detections for a in ai_detections 
-                                   if s.body_region and a.body_region and s.body_region == a.body_region)
+    # Use comparison service for detailed IoU-based comparison
+    comparison_result = comparison_service.compare_predictions(
+        student_detections,
+        ai_detections
+    )
+    
+    # Generate feedback
+    feedback = comparison_service.generate_feedback(comparison_result)
+    
+    # Legacy metrics for backward compatibility
+    legacy_metrics = {
+        "student_count": comparison_result['summary']['student_count'],
+        "ai_count": comparison_result['summary']['ai_count'],
+        "both_found_fractures": comparison_result['summary']['both_found_fractures'],
+        "student_only": comparison_result['summary']['student_only'],
+        "ai_only": comparison_result['summary']['ai_only'],
+        "both_normal": comparison_result['summary']['both_normal'],
+        "fracture_type_matches": comparison_result['fracture_type_metrics']['correct_count'],
+        # body_region_matches removed
     }
     
     return PredictionComparison(
@@ -293,7 +322,9 @@ def get_prediction_comparison(
         image_filename=prediction.image_filename,
         student_detections=student_detections,
         ai_detections=ai_detections,
-        comparison_metrics=comparison_metrics
+        comparison_metrics=legacy_metrics,
+        detailed_comparison=comparison_result,
+        feedback=feedback
     )
 
 @router.get("/predictions/{prediction_id}", response_model=FracturePredictionOut)
