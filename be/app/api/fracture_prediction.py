@@ -17,7 +17,7 @@ from app.schemas.fracture_prediction import (
     PredictionComparison
 )
 from app.services.bone_fracture_predict.predictor import fracture_predictor
-from app.services.bone_fracture_predict.comparison_service import comparison_service
+from app.services.annotation_comparision import comparison_service
 
 router = APIRouter()
 
@@ -122,6 +122,7 @@ async def submit_student_annotations(
     """
     Submit student annotations for a prediction.
     Allows empty annotations (student predicts no fracture).
+    Can be called multiple times to revise predictions before AI comparison.
     """
     prediction = db.query(FracturePrediction).filter(FracturePrediction.id == prediction_id).first()
     
@@ -131,13 +132,21 @@ async def submit_student_annotations(
     if prediction.user_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     
+    # Prevent revision after AI prediction has been run
+    if prediction.has_ai_predictions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot revise student predictions after AI comparison has been run. Clear all to start over."
+        )
+    
     try:
-        # Remove existing student annotations
+        # Remove existing student annotations (allows revision)
         db.query(FractureDetection).filter(
             FractureDetection.prediction_id == prediction_id,
             FractureDetection.source == PredictionSource.STUDENT
         ).delete()
         
+        # Add new student annotations (if any)
         for annotation in annotations.annotations:
             db_detection = FractureDetection(
                 prediction_id=prediction_id,
@@ -174,7 +183,8 @@ async def submit_student_annotations(
         return {
             "message": message,
             "count": len(annotations.annotations),
-            "no_fracture_predicted": len(annotations.annotations) == 0
+            "no_fracture_predicted": len(annotations.annotations) == 0,
+            "can_revise": not prediction.has_ai_predictions
         }
         
     except Exception as e:
