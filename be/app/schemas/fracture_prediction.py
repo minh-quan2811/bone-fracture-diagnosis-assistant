@@ -1,9 +1,8 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from app.enums.prediction_source import PredictionSource
 from app.enums.fracture_type import FractureType
-from app.enums.body_region import BodyRegion
 
 class BoundingBox(BaseModel):
     x_min: int
@@ -18,7 +17,6 @@ class DetectionResult(BaseModel):
     class_name: str
     confidence: float = Field(..., ge=0.0, le=1.0)
     fracture_type: Optional[FractureType] = None
-    body_region: Optional[BodyRegion] = None
     bounding_box: BoundingBox
 
 class StudentAnnotation(BaseModel):
@@ -29,11 +27,14 @@ class StudentAnnotation(BaseModel):
     width: int
     height: int
     fracture_type: Optional[FractureType] = None
-    body_region: Optional[BodyRegion] = None
     notes: Optional[str] = None
 
 class StudentAnnotationsSubmit(BaseModel):
-    annotations: List[StudentAnnotation]
+    """
+    Schema for submitting student annotations.
+    Can be empty list if student predicts no fracture.
+    """
+    annotations: List[StudentAnnotation] = Field(default_factory=list)
 
 class FractureDetectionOut(BaseModel):
     id: int
@@ -43,7 +44,6 @@ class FractureDetectionOut(BaseModel):
     class_name: str
     confidence: Optional[float]
     fracture_type: Optional[FractureType]
-    body_region: Optional[BodyRegion]
     x_min: int
     y_min: int
     x_max: int
@@ -81,9 +81,27 @@ class FracturePredictionOut(BaseModel):
     class Config:
         from_attributes = True
 
+class DetailedComparisonMetrics(BaseModel):
+    """Detailed IoU-based comparison metrics"""
+    summary: Dict[str, Any]
+    iou_metrics: Dict[str, float]
+    fracture_type_metrics: Dict[str, Any]
+    matches: List[Dict[str, Any]]
+    unmatched_student: List[Dict[str, Any]]
+    unmatched_ai: List[Dict[str, Any]]
+
+class ComparisonFeedback(BaseModel):
+    """Educational feedback for students"""
+    overall: str
+    detection_performance: str
+    classification_performance: str
+    suggestions: List[str]
+
 class PredictionComparison(BaseModel):
     prediction_id: int
     image_filename: str
     student_detections: List[FractureDetectionOut]
     ai_detections: List[FractureDetectionOut]
     comparison_metrics: dict
+    detailed_comparison: Dict[str, Any]
+    feedback: Dict[str, Any]

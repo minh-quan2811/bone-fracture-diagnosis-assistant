@@ -21,24 +21,6 @@ const FRACTURE_TYPES = [
   { value: 'hairline', label: 'Hairline' }
 ];
 
-const BODY_REGIONS = [
-  { value: '', label: 'Select body region...' },
-  { value: 'arm', label: 'Arm' },
-  { value: 'leg', label: 'Leg' },
-  { value: 'hand', label: 'Hand' },
-  { value: 'foot', label: 'Foot' },
-  { value: 'shoulder', label: 'Shoulder' },
-  { value: 'hip', label: 'Hip' },
-  { value: 'spine', label: 'Spine' },
-  { value: 'ribs', label: 'Ribs' },
-  { value: 'skull', label: 'Skull' },
-  { value: 'pelvis', label: 'Pelvis' },
-  { value: 'wrist', label: 'Wrist' },
-  { value: 'ankle', label: 'Ankle' },
-  { value: 'elbow', label: 'Elbow' },
-  { value: 'knee', label: 'Knee' }
-];
-
 export function AnnotationAttributeSelector({
   annotations,
   onUpdateAnnotation,
@@ -55,13 +37,16 @@ export function AnnotationAttributeSelector({
               ? 'Draw on the image to create annotations' 
               : 'No annotations yet'}
           </p>
+          <p className="text-gray-400 text-xs mt-2">
+            If you see no fractures, you can submit without annotations
+          </p>
         </div>
       </div>
     );
   }
 
   const allAnnotationsComplete = annotations.every(
-    ann => ann.body_region && ann.fracture_type
+    ann => ann.fracture_type
   );
 
   return (
@@ -79,7 +64,7 @@ export function AnnotationAttributeSelector({
 
       <div className="space-y-3 max-h-96 overflow-y-auto">
         {annotations.map((annotation, index) => {
-          const isComplete = annotation.body_region && annotation.fracture_type;
+          const isComplete = annotation.fracture_type;
           
           return (
             <div 
@@ -106,27 +91,6 @@ export function AnnotationAttributeSelector({
               </div>
 
               <div className="space-y-2">
-                {/* Body Region */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-900 mb-1">
-                    Body Region <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={annotation.body_region || ''}
-                    onChange={(e) => onUpdateAnnotation({
-                      ...annotation,
-                      body_region: e.target.value
-                    })}
-                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
-                  >
-                    {BODY_REGIONS.map(region => (
-                      <option key={region.value} value={region.value} className="text-gray-900">
-                        {region.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
                 {/* Fracture Type */}
                 <div>
                   <label className="block text-xs font-medium text-gray-900 mb-1">
@@ -178,7 +142,7 @@ export function AnnotationAttributeSelector({
       {!allAnnotationsComplete && (
         <div className="bg-yellow-50 rounded-lg p-2 border border-yellow-200">
           <p className="text-yellow-800 text-xs">
-            ⚠️ Please complete all annotations before confirming
+            ⚠️ Please select fracture type for all annotations
           </p>
         </div>
       )}

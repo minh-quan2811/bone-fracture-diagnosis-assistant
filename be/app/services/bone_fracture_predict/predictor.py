@@ -43,7 +43,7 @@ class BoneFracturePredictorModel:
     #         }
     #     }
 
-    # Mock prediction function (having predictions with types and regions)
+    # Mock prediction function (having predictions with fracture types only - no body region)
     def predict(self, image_data: bytes) -> dict:
         return {
             "has_fracture": True,
@@ -55,7 +55,7 @@ class BoneFracturePredictorModel:
                     "class_name": "fracture",
                     "confidence": 0.92,
                     "fracture_type": "transverse",
-                    "body_region": "arm",
+                    # body_region removed
                     "bounding_box": {
                         "x_min": 120,
                         "y_min": 200,
@@ -70,7 +70,7 @@ class BoneFracturePredictorModel:
                     "class_name": "fracture",
                     "confidence": 0.85,
                     "fracture_type": "spiral",
-                    "body_region": "leg",
+                    # body_region removed
                     "bounding_box": {
                         "x_min": 400,
                         "y_min": 150,
@@ -132,18 +132,15 @@ class BoneFracturePredictorModel:
     #                     # Convert coordinates to integers
     #                     x1, y1, x2, y2 = map(int, xyxy)
                         
-    #                     # Extract fracture type and body region from model output
-    #                     # This depends on how your model is trained
-    #                     # Example: if you have multi-output model or use class names
+    #                     # Extract fracture type from model output
     #                     fracture_type = self._extract_fracture_type(class_name, cls_id)
-    #                     body_region = self._extract_body_region(class_name, cls_id)
                         
     #                     detection = {
     #                         "class_id": cls_id,
     #                         "class_name": "fracture",
     #                         "confidence": conf,
     #                         "fracture_type": fracture_type,
-    #                         "body_region": body_region,
+    #                         # body_region removed
     #                         "bounding_box": {
     #                             "x_min": x1,
     #                             "y_min": y1,
@@ -192,28 +189,6 @@ class BoneFracturePredictorModel:
     #     }
     #     return fracture_type_map.get(class_id)
     
-    # def _extract_body_region(self, class_name: str, class_id: int) -> str:
-    #     """
-    #     Extract body region from class name or ID
-    #     Implement based on your model's class structure
-    #     """
-    #     # Example: if class names include region info
-    #     # Or use a separate classification model/logic
-    #     region_keywords = {
-    #         "arm": "arm",
-    #         "leg": "leg",
-    #         "hand": "hand",
-    #         "foot": "foot",
-    #         "wrist": "wrist",
-    #         "ankle": "ankle"
-    #     }
-    #     
-    #     for keyword, region in region_keywords.items():
-    #         if keyword in class_name.lower():
-    #             return region
-    #     
-    #     return None
-    
     def predict_from_file(self, file_path: str) -> Dict:
         try:
             with open(file_path, 'rb') as f:
@@ -231,10 +206,6 @@ class BoneFracturePredictorModel:
             "supported_fracture_types": [
                 "greenstick", "transverse", "comminuted", "spiral", 
                 "compound", "oblique", "compression", "avulsion", "hairline"
-            ],
-            "supported_body_regions": [
-                "arm", "leg", "hand", "foot", "shoulder", "hip", 
-                "spine", "ribs", "skull", "pelvis", "wrist", "ankle", "elbow", "knee"
             ]
         }
 

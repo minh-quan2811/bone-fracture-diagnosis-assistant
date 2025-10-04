@@ -26,13 +26,6 @@ export function DetectionLists({ detections }: DetectionListsProps) {
                   Detection #{index + 1}
                 </div>
                 <div className="text-gray-900 space-y-1.5 text-sm">
-                  {detection.body_region && (
-                    <div className="flex items-center gap-2">
-                      <span>📍</span>
-                      <span className="font-medium">Body Region:</span>
-                      <span className="capitalize">{detection.body_region}</span>
-                    </div>
-                  )}
                   {detection.fracture_type && (
                     <div className="flex items-center gap-2">
                       <span>🔍</span>
@@ -69,13 +62,6 @@ export function DetectionLists({ detections }: DetectionListsProps) {
                       <span>🎯</span>
                       <span className="font-medium">Confidence:</span>
                       <span className="font-semibold">{(detection.confidence * 100).toFixed(1)}%</span>
-                    </div>
-                  )}
-                  {detection.body_region && (
-                    <div className="flex items-center gap-2">
-                      <span>📍</span>
-                      <span className="font-medium">Body Region:</span>
-                      <span className="capitalize">{detection.body_region}</span>
                     </div>
                   )}
                   {detection.fracture_type && (

@@ -37,8 +37,7 @@ export function useFracturePredictionAPI(): UseFracturePredictionAPIReturn {
     studentAnnotations: StudentAnnotation[],
     token: string
   ) => {
-    if (studentAnnotations.length === 0) return;
-
+    // Allow empty annotations (student predicts no fracture)
     setIsSubmittingAnnotations(true);
     setError(null);
 
@@ -51,7 +50,7 @@ export function useFracturePredictionAPI(): UseFracturePredictionAPIReturn {
         width: Math.floor(ann.width),
         height: Math.floor(ann.height),
         fracture_type: ann.fracture_type,
-        body_region: ann.body_region,
+        // body_region removed
         notes: ann.notes || ''
       }));
 
@@ -64,24 +63,29 @@ export function useFracturePredictionAPI(): UseFracturePredictionAPIReturn {
         student_prediction_count: annotations.length
       } : null);
 
-      // Convert annotations to detections for display
-      const studentDetections: Detection[] = studentAnnotations.map((ann, index) => ({
-        id: ann.id,
-        x: ann.x,
-        y: ann.y,
-        width: ann.width,
-        height: ann.height,
-        label: `${ann.body_region || 'Unknown'} - ${ann.fracture_type || 'Unknown'}`,
-        color: '#3b82f6',
-        source: 'student',
-        fracture_type: ann.fracture_type,
-        body_region: ann.body_region
-      }));
+      // Convert annotations to detections for display (only if there are annotations)
+      if (studentAnnotations.length > 0) {
+        const studentDetections: Detection[] = studentAnnotations.map((ann, index) => ({
+          id: ann.id,
+          x: ann.x,
+          y: ann.y,
+          width: ann.width,
+          height: ann.height,
+          label: ann.fracture_type || 'Unknown',
+          color: '#3b82f6',
+          source: 'student',
+          fracture_type: ann.fracture_type
+          // body_region removed
+        }));
 
-      setAllDetections(prev => [
-        ...prev.filter(d => d.source !== 'student'),
-        ...studentDetections
-      ]);
+        setAllDetections(prev => [
+          ...prev.filter(d => d.source !== 'student'),
+          ...studentDetections
+        ]);
+      } else {
+        // Remove any existing student detections if submitting empty
+        setAllDetections(prev => prev.filter(d => d.source !== 'student'));
+      }
 
     } catch (err: any) {
       console.error('Submit annotations error:', err);
@@ -121,12 +125,12 @@ export function useFracturePredictionAPI(): UseFracturePredictionAPIReturn {
           y: detection.y_min,
           width: detection.width,
           height: detection.height,
-          label: `AI: ${detection.body_region || 'Unknown'} - ${detection.fracture_type || 'Unknown'}`,
+          label: `AI: ${detection.fracture_type || 'Unknown'}`,
           confidence: detection.confidence,
           color: '#ef4444',
           source: 'ai' as const,
-          fracture_type: detection.fracture_type,
-          body_region: detection.body_region
+          fracture_type: detection.fracture_type
+          // body_region removed
         }));
 
       setAllDetections(prev => [
