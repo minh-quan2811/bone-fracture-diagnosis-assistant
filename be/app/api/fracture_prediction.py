@@ -5,6 +5,8 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
 from datetime import datetime
+from PIL import Image
+import io
 
 from app.core.database import get_db
 from app.api.auth import get_current_user
@@ -25,8 +27,8 @@ router = APIRouter()
 UPLOAD_DIRECTORY = "uploads/fracture_images"
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff"}
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
+TARGET_SIZE = (640, 640)  # Standard size for YOLO models
 
-# Ensure upload directory exists
 os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 
 def validate_image_file(file: UploadFile) -> None:
@@ -46,14 +48,64 @@ def validate_image_file(file: UploadFile) -> None:
             detail=f"File too large. Max size: {MAX_FILE_SIZE / (1024*1024):.0f}MB"
         )
 
-def save_uploaded_file(file: UploadFile, user_id: int) -> str:
+def resize_image_to_640(image_bytes: bytes) -> tuple[bytes, int, int, dict]:
+    """
+    Resize image to 640x640 while maintaining aspect ratio with padding.
+    Returns: (resized_image_bytes, original_width, original_height, padding_info)
+    """
+    img = Image.open(io.BytesIO(image_bytes))
+    original_width, original_height = img.size
+    
+    # Convert RGBA to RGB if necessary
+    if img.mode == 'RGBA':
+        background = Image.new('RGB', img.size, (255, 255, 255))
+        background.paste(img, mask=img.split()[3])
+        img = background
+    elif img.mode != 'RGB':
+        img = img.convert('RGB')
+    
+    # Calculate aspect ratio and resize with padding
+    aspect_ratio = original_width / original_height
+    
+    if aspect_ratio > 1:
+        new_width = TARGET_SIZE[0]
+        new_height = int(TARGET_SIZE[0] / aspect_ratio)
+    else:
+        new_height = TARGET_SIZE[1]
+        new_width = int(TARGET_SIZE[1] * aspect_ratio)
+    
+    # Resize image
+    img = img.resize((new_width, new_height), Image.LANCZOS)
+    
+    # Create new image with padding
+    new_img = Image.new('RGB', TARGET_SIZE, (0, 0, 0))
+    paste_x = (TARGET_SIZE[0] - new_width) // 2
+    paste_y = (TARGET_SIZE[1] - new_height) // 2
+    new_img.paste(img, (paste_x, paste_y))
+    
+    # Store padding info for frontend coordinate mapping
+    padding_info = {
+        "offset_x": paste_x,
+        "offset_y": paste_y,
+        "content_width": new_width,
+        "content_height": new_height
+    }
+    
+    # Convert back to bytes
+    output = io.BytesIO()
+    new_img.save(output, format='JPEG', quality=95)
+    resized_bytes = output.getvalue()
+    
+    return resized_bytes, original_width, original_height, padding_info
+
+def save_uploaded_file(file_bytes: bytes, filename: str, user_id: int) -> str:
     timestamp = int(time.time())
-    file_ext = os.path.splitext(file.filename)[1].lower()
-    unique_filename = f"user_{user_id}_{timestamp}_{file.filename}"
+    file_ext = os.path.splitext(filename)[1].lower()
+    unique_filename = f"user_{user_id}_{timestamp}_{filename}"
     file_path = os.path.join(UPLOAD_DIRECTORY, unique_filename)
     
     with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        buffer.write(file_bytes)
     
     return file_path.replace('\\', '/')
 
@@ -63,31 +115,27 @@ async def upload_image(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Upload an image for fracture prediction (without running AI prediction yet)"""
+    """Upload and resize image to 640x640 for fracture prediction"""
     validate_image_file(file)
     
     try:
-        # Save uploaded file
-        file_path = save_uploaded_file(file, current_user.id)
-        
-        # Read file to get dimensions
-        file.file.seek(0)
+        # Read original file
         file_content = await file.read()
         
-        # Get basic image info without running prediction
-        from PIL import Image
-        import io
-        img = Image.open(io.BytesIO(file_content))
-        width, height = img.size
+        # Resize image to 640x640
+        resized_bytes, original_width, original_height, padding_info = resize_image_to_640(file_content)
         
-        # Create prediction record without AI results
+        # Save resized image
+        file_path = save_uploaded_file(resized_bytes, file.filename, current_user.id)
+        
+        # Create prediction record with padding info
         db_prediction = FracturePrediction(
             user_id=current_user.id,
             image_filename=file.filename,
             image_path=file_path,
-            image_size=len(file_content),
-            image_width=width,
-            image_height=height,
+            image_size=len(resized_bytes),
+            image_width=640,  # Always 640 after resize
+            image_height=640,  # Always 640 after resize
             image_format=os.path.splitext(file.filename)[1][1:].lower(),
             has_student_predictions=False,
             has_ai_predictions=False,
@@ -97,11 +145,19 @@ async def upload_image(
             confidence_threshold=fracture_predictor.confidence_threshold
         )
         
+        # Store padding info in a custom field or return it separately
+        # For now, we'll add it to the response
         db.add(db_prediction)
         db.commit()
         db.refresh(db_prediction)
         
-        return db_prediction
+        # Add padding info to response
+        response_dict = {
+            **db_prediction.__dict__,
+            "padding_info": padding_info
+        }
+        
+        return response_dict
         
     except Exception as e:
         if 'file_path' in locals() and os.path.exists(file_path):
@@ -119,11 +175,7 @@ async def submit_student_annotations(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Submit student annotations for a prediction.
-    Allows empty annotations (student predicts no fracture).
-    Can be called multiple times to revise predictions before AI comparison.
-    """
+    """Submit student annotations for a prediction"""
     prediction = db.query(FracturePrediction).filter(FracturePrediction.id == prediction_id).first()
     
     if not prediction:
@@ -132,21 +184,20 @@ async def submit_student_annotations(
     if prediction.user_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     
-    # Prevent revision after AI prediction has been run
     if prediction.has_ai_predictions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot revise student predictions after AI comparison has been run. Clear all to start over."
+            detail="Cannot revise student predictions after AI comparison has been run"
         )
     
     try:
-        # Remove existing student annotations (allows revision)
+        # Remove existing student annotations
         db.query(FractureDetection).filter(
             FractureDetection.prediction_id == prediction_id,
             FractureDetection.source == PredictionSource.STUDENT
         ).delete()
         
-        # Add new student annotations (if any)
+        # Add new student annotations
         for annotation in annotations.annotations:
             db_detection = FractureDetection(
                 prediction_id=prediction_id,
@@ -155,7 +206,6 @@ async def submit_student_annotations(
                 class_name="fracture",
                 confidence=None,
                 fracture_type=annotation.fracture_type,
-                # body_region removed
                 x_min=annotation.x_min,
                 y_min=annotation.y_min,
                 x_max=annotation.x_max,
@@ -200,7 +250,7 @@ async def run_ai_prediction(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Run AI prediction on an uploaded image"""
+    """Run AI prediction on a 640x640 resized image"""
     prediction = db.query(FracturePrediction).filter(FracturePrediction.id == prediction_id).first()
     
     if not prediction:
@@ -213,11 +263,11 @@ async def run_ai_prediction(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image file not found")
     
     try:
-        # Read image file
+        # Read the already resized 640x640 image
         with open(prediction.image_path, 'rb') as f:
             file_content = f.read()
         
-        # Get AI prediction
+        # Run AI prediction
         prediction_result = fracture_predictor.predict(file_content)
         
         # Remove existing AI predictions
@@ -236,7 +286,6 @@ async def run_ai_prediction(
                 class_name=detection["class_name"],
                 confidence=detection["confidence"],
                 fracture_type=detection.get("fracture_type"),
-                # body_region removed
                 x_min=bbox["x_min"],
                 y_min=bbox["y_min"],
                 x_max=bbox["x_max"],
@@ -277,9 +326,7 @@ def get_prediction_comparison(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Get detailed comparison between student and AI predictions using IoU and fracture type matching
-    """
+    """Get detailed comparison between student and AI predictions"""
     prediction = db.query(FracturePrediction).filter(FracturePrediction.id == prediction_id).first()
     
     if not prediction:
@@ -288,14 +335,12 @@ def get_prediction_comparison(
     if prediction.user_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     
-    # Check if both predictions exist
     if not prediction.has_student_predictions or not prediction.has_ai_predictions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Both student and AI predictions are required for comparison"
         )
     
-    # Get student and AI detections separately
     student_detections = db.query(FractureDetection).filter(
         FractureDetection.prediction_id == prediction_id,
         FractureDetection.source == PredictionSource.STUDENT
@@ -306,16 +351,13 @@ def get_prediction_comparison(
         FractureDetection.source == PredictionSource.AI
     ).all()
     
-    # Use comparison service for detailed IoU-based comparison
     comparison_result = comparison_service.compare_predictions(
         student_detections,
         ai_detections
     )
     
-    # Generate feedback
     feedback = comparison_service.generate_feedback(comparison_result)
     
-    # Legacy metrics for backward compatibility
     legacy_metrics = {
         "student_count": comparison_result['summary']['student_count'],
         "ai_count": comparison_result['summary']['ai_count'],
@@ -324,7 +366,6 @@ def get_prediction_comparison(
         "ai_only": comparison_result['summary']['ai_only'],
         "both_normal": comparison_result['summary']['both_normal'],
         "fracture_type_matches": comparison_result['fracture_type_metrics']['correct_count'],
-        # body_region_matches removed
     }
     
     return PredictionComparison(
@@ -343,7 +384,7 @@ def get_prediction_details(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get details of a specific fracture prediction."""
+    """Get details of a specific fracture prediction"""
     prediction = db.query(FracturePrediction).filter(FracturePrediction.id == prediction_id).first()
     
     if not prediction:
@@ -361,10 +402,7 @@ def get_all_predictions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Get all fracture predictions for the CURRENT LOGGED-IN user only.
-    Uses current_user from JWT token to filter predictions.
-    """
+    """Get all fracture predictions for the current logged-in user"""
     query = db.query(FracturePrediction).filter(
         FracturePrediction.user_id == current_user.id
     )

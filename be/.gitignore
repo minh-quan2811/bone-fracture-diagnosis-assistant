@@ -11,3 +11,12 @@ __pycache__/
 # Model weights
 *.pt
 *.onnx
+
+# Ignore all common image files
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.gif
+*.tiff
+*.webp

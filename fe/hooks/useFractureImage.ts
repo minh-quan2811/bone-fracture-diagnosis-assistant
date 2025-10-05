@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import { uploadFractureImage } from '@/lib/fracture-api';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 interface UseFractureImageReturn {
   image: HTMLImageElement | null;
   imageFile: File | null;
@@ -35,20 +37,25 @@ export function useFractureImage(): UseFractureImageReturn {
       const prediction = await uploadFractureImage(file, token);
       setImageFile(file);
 
-      // Load image for display
+      // Load the RESIZED 640x640 image from server (not the original file)
       return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            setImage(img);
-            resolve(prediction);
-          };
-          img.onerror = () => reject(new Error('Failed to load image'));
-          img.src = e.target?.result as string;
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        
+        img.onload = () => {
+          console.log('Image loaded from server:', img.width, 'x', img.height);
+          setImage(img);
+          resolve(prediction);
         };
-        reader.onerror = () => reject(new Error('Failed to read file'));
-        reader.readAsDataURL(file);
+        
+        img.onerror = () => {
+          console.error('Failed to load image from server');
+          reject(new Error('Failed to load image from server'));
+        };
+        
+        // Load the resized image from the server
+        const imagePath = prediction.image_path.replace(/\\/g, '/');
+        img.src = `${API_BASE}/${imagePath}?t=${Date.now()}`;
       });
     } catch (err: any) {
       setError(err.message);
