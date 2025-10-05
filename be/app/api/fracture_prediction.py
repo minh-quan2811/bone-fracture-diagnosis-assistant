@@ -55,7 +55,7 @@ def save_uploaded_file(file: UploadFile, user_id: int) -> str:
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    return file_path
+    return file_path.replace('\\', '/')
 
 @router.post("/upload", response_model=FracturePredictionOut)
 async def upload_image(
