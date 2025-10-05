@@ -7,3 +7,7 @@ venv/
 # Compliled files
 __pycache__/
 *.pyc
+
+# Model weights
+*.pt
+*.onnx

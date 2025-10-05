@@ -76,3 +76,25 @@ export async function getPredictionComparison(predictionId: number, token: strin
   
   return res.json();
 }
+
+export async function getAllPredictions(
+  token: string,
+  skip: number = 0,
+  limit: number = 100
+) {
+  const params = new URLSearchParams({
+    skip: skip.toString(),
+    limit: limit.toString(),
+  });
+
+  const res = await fetch(`${API_BASE}/api/fracture/predictions?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: "Failed to fetch predictions" }));
+    throw new Error(errorData.detail || "Failed to fetch predictions");
+  }
+  
+  return res.json();
+}

@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
 from app.core.database import engine, Base
 from app.api import auth, student_chat, fracture_prediction
 
@@ -21,6 +23,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files for uploaded images
+uploads_path = "uploads"
+os.makedirs(uploads_path, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_path), name="uploads")
 
 app.include_router(auth, prefix="/auth", tags=["Auth"])
 app.include_router(student_chat, prefix="/chat", tags=["Chat"])
