@@ -14,12 +14,6 @@ interface AnnotationCanvasProps {
   onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseUp: () => void;
   containerRef: React.RefObject<HTMLDivElement | null>;
-  paddingInfo?: {
-    offset_x: number;
-    offset_y: number;
-    content_width: number;
-    content_height: number;
-  } | null;
 }
 
 export interface AnnotationCanvasRef {
@@ -38,8 +32,7 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
   onMouseDown,
   onMouseMove,
   onMouseUp,
-  containerRef,
-  paddingInfo
+  containerRef
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -50,29 +43,18 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Fixed display size: 640x640
-    const displayWidth = 640;
-    const displayHeight = 640;
+    // Set canvas size to match image natural size for 1:1 pixel mapping
+    canvas.width = image.width;
+    canvas.height = image.height;
 
-    canvas.style.width = `${displayWidth}px`;
-    canvas.style.height = `${displayHeight}px`;
-    canvas.width = displayWidth * window.devicePixelRatio;
-    canvas.height = displayHeight * window.devicePixelRatio;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-
+    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(image, 0, 0, displayWidth, displayHeight);
+    
+    // Draw image at full resolution
+    ctx.drawImage(image, 0, 0, image.width, image.height);
 
-    // Since the server returns a 640x640 image with padding already applied,
-    // and annotations are stored in the CONTENT coordinate space (without padding),
-    // we need to map content coordinates to display coordinates
-    const offsetX = paddingInfo?.offset_x || 0;
-    const offsetY = paddingInfo?.offset_y || 0;
-    const contentWidth = paddingInfo?.content_width || displayWidth;
-    const contentHeight = paddingInfo?.content_height || displayHeight;
-
-    // Annotations are stored relative to content area, scale to display
-    const scaleX = 1; // Content and display are same size
+    // No scaling needed - we draw at 1:1 scale
+    const scaleX = 1;
     const scaleY = 1;
 
     // Draw confirmed AI detections
@@ -82,8 +64,8 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
         ctx.lineWidth = 3;
         ctx.setLineDash([5, 5]);
         ctx.strokeRect(
-          detection.x * scaleX + offsetX,
-          detection.y * scaleY + offsetY,
+          detection.x * scaleX,
+          detection.y * scaleY,
           detection.width * scaleX,
           detection.height * scaleY
         );
@@ -100,7 +82,7 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
           label += ` (${(detection.confidence * 100).toFixed(1)}%)`;
         }
         
-        ctx.fillText(label, detection.x * scaleX + offsetX, detection.y * scaleY + offsetY - 5);
+        ctx.fillText(label, detection.x * scaleX, detection.y * scaleY - 5);
       });
     }
 
@@ -111,8 +93,8 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
         ctx.lineWidth = 3;
         ctx.setLineDash([]);
         ctx.strokeRect(
-          detection.x * scaleX + offsetX,
-          detection.y * scaleY + offsetY,
+          detection.x * scaleX,
+          detection.y * scaleY,
           detection.width * scaleX,
           detection.height * scaleY
         );
@@ -125,19 +107,19 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
           label = `Student: ${detection.fracture_type}`;
         }
         
-        ctx.fillText(label, detection.x * scaleX + offsetX, detection.y * scaleY + offsetY - 5);
+        ctx.fillText(label, detection.x * scaleX, detection.y * scaleY - 5);
       });
     }
 
-    // Draw draft annotations
+    // Draw draft annotations (not yet confirmed)
     if (showStudentAnnotations) {
       annotations.forEach((annotation, index) => {
         ctx.strokeStyle = '#3b82f6';
         ctx.lineWidth = 3;
         ctx.setLineDash([]);
         ctx.strokeRect(
-          annotation.x * scaleX + offsetX,
-          annotation.y * scaleY + offsetY,
+          annotation.x * scaleX,
+          annotation.y * scaleY,
           annotation.width * scaleX,
           annotation.height * scaleY
         );
@@ -150,7 +132,7 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
           label = `Draft: ${annotation.fracture_type}`;
         }
         
-        ctx.fillText(label, annotation.x * scaleX + offsetX, annotation.y * scaleY + offsetY - 5);
+        ctx.fillText(label, annotation.x * scaleX, annotation.y * scaleY - 5);
       });
     }
 
@@ -160,8 +142,8 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
       ctx.lineWidth = 3;
       ctx.setLineDash([5, 5]);
       ctx.strokeRect(
-        currentRect.x * scaleX + offsetX,
-        currentRect.y * scaleY + offsetY,
+        currentRect.x * scaleX,
+        currentRect.y * scaleY,
         currentRect.width * scaleX,
         currentRect.height * scaleY
       );
@@ -169,7 +151,7 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
       ctx.fillStyle = '#10b981';
       ctx.font = 'bold 14px Arial';
       ctx.setLineDash([]);
-      ctx.fillText('Drawing...', currentRect.x * scaleX + offsetX, currentRect.y * scaleY + offsetY - 5);
+      ctx.fillText('Drawing...', currentRect.x * scaleX, currentRect.y * scaleY - 5);
     }
   }, [
     image, 
@@ -179,8 +161,7 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
     isDrawing, 
     showStudentAnnotations, 
     showAiPredictions,
-    containerRef,
-    paddingInfo
+    containerRef
   ]);
 
   useEffect(() => {
@@ -198,7 +179,8 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
   return (
     <canvas
       ref={canvasRef}
-      className={`block ${isAnnotating ? 'cursor-crosshair' : 'cursor-default'}`}
+      className={`max-w-full max-h-full block ${isAnnotating ? 'cursor-crosshair' : 'cursor-default'}`}
+      style={{ objectFit: 'contain' }}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}

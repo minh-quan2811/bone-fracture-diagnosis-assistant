@@ -184,7 +184,7 @@ export default function StudentPage() {
       {/* Main content area - adjust width based on sidebar visibility */}
       <div className={`flex-1 flex flex-col min-h-0 overflow-hidden ${sidebarVisible ? '' : 'w-full'}`}>
         <ResizableLayout className="flex-1">
-          <ResizableLayout.Panel defaultSize={60} minSize={30} className="flex flex-col overflow-hidden">
+          <ResizableLayout.Panel defaultSize={55} minSize={45} className="flex flex-col overflow-hidden">
             {activeConversation ? (
               <>
                 {/* Chat Header with sidebar toggle only when sidebar is hidden */}

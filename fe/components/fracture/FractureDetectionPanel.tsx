@@ -13,6 +13,8 @@ import { AnnotationAttributeSelector } from './AnnotationAttributeSelector';
 import { PredictionStatusCard } from './PredictionStatusCard';
 import { StudentActionButtons } from './StudentActionButtons';
 import { Detection } from '@/types/fracture';
+
+// Import History Components
 import { HistorySection } from './history/HistorySection';
 import { HistoryPage } from './history/HistoryPage';
 
@@ -25,17 +27,15 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
   const canvasRef = useRef<AnnotationCanvasRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // History navigation state
   const [showHistory, setShowHistory] = React.useState(false);
+
+  // UI states
   const [showStudentAnnotations, setShowStudentAnnotations] = React.useState(true);
   const [showAiPredictions, setShowAiPredictions] = React.useState(true);
   const [isCollapsed, setIsCollapsed] = React.useState(false);
-  const [paddingInfo, setPaddingInfo] = React.useState<{
-    offset_x: number;
-    offset_y: number;
-    content_width: number;
-    content_height: number;
-  } | null>(null);
 
+  // Custom hooks (existing)
   const { 
     image, 
     isUploading, 
@@ -82,6 +82,7 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
     clearReviseError
   } = usePredictionRevision();
 
+  // Derived state
   const error = imageError || apiError || reviseError;
   const setError = (err: string | null) => {
     setImageError(err);
@@ -98,6 +99,7 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
 
   const canSubmit = currentPrediction && !currentPrediction.has_student_predictions;
 
+  // Auto-fetch comparison when both predictions exist
   useEffect(() => {
     if (
       currentPrediction?.has_student_predictions && 
@@ -115,22 +117,16 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
     currentPrediction?.id
   ]);
 
+
   if (showHistory) {
     return <HistoryPage token={token} onBack={() => setShowHistory(false)} />;
   }
 
+  // EVENT HANDLERS
   const handleImageUpload = async (file: File) => {
     try {
       const prediction = await uploadImage(file, token);
       setCurrentPrediction(prediction);
-      
-      // Extract padding info if present
-      if (prediction.padding_info) {
-        setPaddingInfo(prediction.padding_info);
-      } else {
-        setPaddingInfo(null);
-      }
-      
       clearAnnotations();
       setAllDetections([]);
     } catch (err: any) {
@@ -143,25 +139,13 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
 
     const canvas = e.currentTarget;
     const rect = canvas.getBoundingClientRect();
+    const scaleX = image.width / rect.width;
+    const scaleY = image.height / rect.height;
     
-    // Get mouse position relative to canvas (which is 640x640)
-    const canvasX = e.clientX - rect.left;
-    const canvasY = e.clientY - rect.top;
-    
-    // Account for padding offset - convert to content coordinates
-    const offsetX = paddingInfo?.offset_x || 0;
-    const offsetY = paddingInfo?.offset_y || 0;
-    
-    // Subtract offset to get position within content area
-    const x = canvasX - offsetX;
-    const y = canvasY - offsetY;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
-    // Only allow annotation within content area
-    if (x >= 0 && y >= 0 && 
-        x <= (paddingInfo?.content_width || 640) && 
-        y <= (paddingInfo?.content_height || 640)) {
-      onMouseDown(x, y);
-    }
+    onMouseDown(x, y);
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -169,18 +153,11 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
 
     const canvas = e.currentTarget;
     const rect = canvas.getBoundingClientRect();
+    const scaleX = image.width / rect.width;
+    const scaleY = image.height / rect.height;
     
-    // Get mouse position relative to canvas (which is 640x640)
-    const canvasX = e.clientX - rect.left;
-    const canvasY = e.clientY - rect.top;
-    
-    // Account for padding offset - convert to content coordinates
-    const offsetX = paddingInfo?.offset_x || 0;
-    const offsetY = paddingInfo?.offset_y || 0;
-    
-    // Subtract offset to get position within content area
-    const x = canvasX - offsetX;
-    const y = canvasY - offsetY;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
     onMouseMove(x, y);
   };
@@ -269,8 +246,11 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
     setIsAnnotating(false);
   };
 
+
+
   return (
     <div className="h-full bg-white border-l border-gray-200 flex flex-col overflow-hidden">
+      {/* Header */}
       <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -296,7 +276,7 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
             onClick={handleClearAll}
             className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
           >
-            Clear
+            🗑️ Clear
           </button>
         </div>
       </div>
@@ -304,22 +284,27 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
       {!isCollapsed && (
         <div className="flex-1 overflow-y-auto min-h-0">
           <div className="p-4 space-y-4">
+            {/* Error Display */}
             <ErrorDisplay error={error} onDismiss={() => setError(null)} />
 
+            {/* Upload Zone or Image Display */}
             {!image ? (
               <>
                 <ImageUploadZone 
                   onImageUpload={handleImageUpload}
                   isUploading={isUploading}
                 />
+                
+                {/* HISTORY SECTION */}
                 <HistorySection onNavigateToHistory={() => setShowHistory(true)} />
               </>
             ) : (
               <>
+                {/* Scrollable Image Container - Like History Page */}
                 <div 
                   ref={containerRef} 
-                  className="w-full border-2 border-gray-300 rounded-lg overflow-hidden bg-white flex items-center justify-center"
-                  style={{ width: '640px', height: '640px' }}
+                  className="w-full bg-gray-100 rounded-lg border-2 border-gray-300 flex items-center justify-center p-4 overflow-auto"
+                  style={{ maxHeight: '600px' }}
                 >
                   <AnnotationCanvas
                     ref={canvasRef}
@@ -335,11 +320,12 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                     onMouseMove={handleCanvasMouseMove}
                     onMouseUp={handleCanvasMouseUp}
                     containerRef={containerRef}
-                    paddingInfo={paddingInfo}
                   />
                 </div>
 
+                {/* Controls Below Image - Split Layout */}
                 <div className="grid grid-cols-2 gap-4">
+                  {/* Left: Student Action Buttons */}
                   <div className="space-y-2">
                     <h4 className="font-semibold text-gray-900 text-sm">Student Actions</h4>
                     
@@ -374,7 +360,7 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                     {!currentPrediction?.has_student_predictions && (
                       <div className="bg-yellow-50 rounded-lg p-2 border border-yellow-200">
                         <p className="text-yellow-800 text-xs">
-                          Submit your prediction first to unlock AI comparison
+                          🔒 Submit your prediction first to unlock AI comparison
                         </p>
                       </div>
                     )}
@@ -388,7 +374,7 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                           className="form-checkbox h-4 w-4 text-blue-600 rounded"
                         />
                         <span className="text-sm text-gray-900">
-                          Show Student ({currentPrediction?.student_prediction_count || annotations.length})
+                          🎓 Show Student ({currentPrediction?.student_prediction_count || annotations.length})
                         </span>
                       </label>
                       
@@ -400,12 +386,13 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                           className="form-checkbox h-4 w-4 text-red-600 rounded"
                         />
                         <span className="text-sm text-gray-900">
-                          Show AI ({currentPrediction?.ai_prediction_count || 0})
+                          🤖 Show AI ({currentPrediction?.ai_prediction_count || 0})
                         </span>
                       </label>
                     </div>
                   </div>
 
+                  {/* Right: Annotation Attributes */}
                   <div>
                     <AnnotationAttributeSelector
                       annotations={annotations}
@@ -418,7 +405,7 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
 
                 {isAnnotating && (
                   <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                    <p className="text-blue-900 font-medium text-sm">Annotation Mode Active</p>
+                    <p className="text-blue-900 font-medium text-sm">💡 Annotation Mode Active</p>
                     <p className="text-blue-800 text-sm mt-1">
                       Click and drag on the image to mark fracture areas. 
                       Select fracture type for each annotation on the right.
