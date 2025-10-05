@@ -1,13 +1,8 @@
-// fe/components/fracture/history/HistoryPage.tsx
-// SIMPLIFIED VERSION - Just show image with canvas overlay
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useHistoryData } from '../../../hooks/history/useHistoryData';
 import { useOverallStats } from '../../../hooks/history/useOverallStats';
 import { OverallStatsCard } from './OverallStatsCard';
-import { ImageNavigator } from './ImageNavigator';
 import { ComparisonResultsCard } from '../ComparisonResultsCard';
-import { Detection } from '../../../types/fracture';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -187,15 +182,6 @@ export function HistoryPage({ token, onBack }: HistoryPageProps) {
 
         <OverallStatsCard stats={stats} />
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <ImageNavigator
-            currentIndex={currentIndex}
-            totalImages={predictions.length}
-            onPrevious={handlePrevious}
-            onNext={handleNext}
-          />
-        </div>
-
         <div 
           className={`transition-opacity duration-300 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}
         >
@@ -223,12 +209,13 @@ export function HistoryPage({ token, onBack }: HistoryPageProps) {
               <div className="relative">
                 <img 
                   ref={imgRef}
-                  src={`${API_BASE}/${currentPrediction.image_path}`}
+                  src={`${API_BASE}/${currentPrediction.image_path.replace(/\\/g, '/')}`}
                   alt={currentPrediction.image_filename}
                   className="max-w-full max-h-[600px] object-contain"
                   onLoad={drawAnnotations}
                   onError={(e) => {
                     console.error('Failed to load image:', currentPrediction.image_path);
+                    console.error('Attempted URL:', `${API_BASE}/${currentPrediction.image_path.replace(/\\/g, '/')}`);
                     e.currentTarget.style.display = 'none';
                   }}
                 />
@@ -240,32 +227,61 @@ export function HistoryPage({ token, onBack }: HistoryPageProps) {
               </div>
             </div>
 
-            {/* Image Metadata */}
-            <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
-              <div className="bg-gray-50 rounded p-2">
-                <div className="text-gray-600">Dimensions</div>
-                <div className="font-semibold text-gray-900">
-                  {currentPrediction.image_width} × {currentPrediction.image_height}
+            {/* Image Navigator - Below Image */}
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <button
+                onClick={handlePrevious}
+                disabled={currentIndex === 0}
+                className="p-2 bg-gray-700 text-white rounded hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                aria-label="Previous image"
+                title="Previous (←)"
+              >
+                <svg 
+                  className="w-4 h-4" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M15 19l-7-7 7-7" 
+                  />
+                </svg>
+              </button>
+              
+              <div className="text-center min-w-[100px]">
+                <div className="text-lg font-bold text-gray-900">
+                  {currentIndex + 1} / {predictions.length}
                 </div>
               </div>
-              <div className="bg-gray-50 rounded p-2">
-                <div className="text-gray-600">Format</div>
-                <div className="font-semibold text-gray-900 uppercase">
-                  {currentPrediction.image_format || 'N/A'}
-                </div>
-              </div>
-              <div className="bg-gray-50 rounded p-2">
-                <div className="text-gray-600">Size</div>
-                <div className="font-semibold text-gray-900">
-                  {currentPrediction.image_size 
-                    ? `${(currentPrediction.image_size / 1024).toFixed(1)} KB`
-                    : 'N/A'}
-                </div>
-              </div>
+              
+              <button
+                onClick={handleNext}
+                disabled={currentIndex === predictions.length - 1}
+                className="p-2 bg-gray-700 text-white rounded hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                aria-label="Next image"
+                title="Next (→)"
+              >
+                <svg 
+                  className="w-4 h-4" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M9 5l7 7-7 7" 
+                  />
+                </svg>
+              </button>
             </div>
 
             {/* Legend */}
-            <div className="mt-4 flex items-center gap-6">
+            <div className="mt-4 flex items-center justify-center gap-6">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-blue-500 rounded"></div>
                 <span className="text-sm text-gray-700">
