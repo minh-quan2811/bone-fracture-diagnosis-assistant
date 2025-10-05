@@ -1,3 +1,6 @@
+// fe/components/fracture/FractureDetectionPanel.tsx
+// FIXED VERSION - All hooks called before conditional returns
+
 import React, { useRef, useEffect } from 'react';
 import { User } from '@/types';
 import { useFractureImage } from '@/hooks/useFractureImage';
@@ -14,6 +17,10 @@ import { PredictionStatusCard } from './PredictionStatusCard';
 import { StudentActionButtons } from './StudentActionButtons';
 import { Detection } from '@/types/fracture';
 
+// Import History Components
+import { HistorySection } from './history/HistorySection';
+import { HistoryPage } from './history/HistoryPage';
+
 interface FractureDetectionPanelProps {
   token: string;
   user: User | null;
@@ -23,7 +30,15 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
   const canvasRef = useRef<AnnotationCanvasRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Custom hooks
+  // History navigation state
+  const [showHistory, setShowHistory] = React.useState(false);
+
+  // UI states
+  const [showStudentAnnotations, setShowStudentAnnotations] = React.useState(true);
+  const [showAiPredictions, setShowAiPredictions] = React.useState(true);
+  const [isCollapsed, setIsCollapsed] = React.useState(false);
+
+  // Custom hooks (existing)
   const { 
     image, 
     isUploading, 
@@ -70,19 +85,47 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
     clearReviseError
   } = usePredictionRevision();
 
-  // UI states
-  const [showStudentAnnotations, setShowStudentAnnotations] = React.useState(true);
-  const [showAiPredictions, setShowAiPredictions] = React.useState(true);
-  const [isCollapsed, setIsCollapsed] = React.useState(false);
-
-  // Combined error
+  // Derived state
   const error = imageError || apiError || reviseError;
   const setError = (err: string | null) => {
     setImageError(err);
     clearReviseError();
   };
 
-  // Handle image upload
+  const allAnnotationsHaveDetails = annotations.length === 0 || annotations.every(
+    ann => ann.fracture_type
+  );
+
+  const showComparisonOnly = currentPrediction?.has_student_predictions && 
+    currentPrediction?.has_ai_predictions && 
+    comparison;
+
+  const canSubmit = currentPrediction && !currentPrediction.has_student_predictions;
+
+  // Auto-fetch comparison when both predictions exist
+  useEffect(() => {
+    if (
+      currentPrediction?.has_student_predictions && 
+      currentPrediction?.has_ai_predictions && 
+      !comparison
+    ) {
+      fetchComparison(currentPrediction.id, token);
+    }
+  }, [
+    currentPrediction?.has_student_predictions, 
+    currentPrediction?.has_ai_predictions, 
+    comparison, 
+    fetchComparison, 
+    token, 
+    currentPrediction?.id
+  ]);
+
+
+  if (showHistory) {
+    return <HistoryPage token={token} onBack={() => setShowHistory(false)} />;
+  }
+
+  // EVENT HANDLERS
   const handleImageUpload = async (file: File) => {
     try {
       const prediction = await uploadImage(file, token);
@@ -94,7 +137,6 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
     }
   };
 
-  // Handle canvas mouse events with coordinate transformation
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isAnnotating || !image) return;
 
@@ -127,7 +169,6 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
     onMouseUp();
   };
 
-  // Handle annotation details save
   const handleSaveAnnotationDetails = (annotation: any) => {
     updateAnnotation(annotation.id, {
       fracture_type: annotation.fracture_type,
@@ -135,11 +176,9 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
     });
   };
 
-  // Handle submit annotations (including empty submissions)
   const handleSubmitAnnotations = async () => {
     if (!currentPrediction) return;
     
-    // Check if annotations have required details
     if (annotations.length > 0) {
       const missingDetails = annotations.some(ann => !ann.fracture_type);
       
@@ -149,23 +188,19 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
       }
     }
     
-    // Allow empty submissions (no fracture detected)
     await submitAnnotationsAPI(currentPrediction.id, annotations, token);
     clearAnnotations();
     setIsAnnotating(false);
   };
 
-  // Handle submit "no fracture" explicitly
   const handleSubmitNoFracture = async () => {
     if (!currentPrediction) return;
     
-    // Submit empty annotations
     await submitAnnotationsAPI(currentPrediction.id, [], token);
     clearAnnotations();
     setIsAnnotating(false);
   };
 
-  // Handle revise prediction
   const handleRevisePrediction = async () => {
     if (!currentPrediction) return;
 
@@ -174,22 +209,18 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
         currentPrediction.id,
         token,
         (loadedAnnotations) => {
-          // Clear current detections
           setAllDetections(
             Array.isArray(allDetections)
               ? allDetections.filter((d: Detection) => d.source !== 'student')
               : []
           );
           
-          // Clear existing annotations
           clearAnnotations();
           
-          // Load annotations for editing
           loadedAnnotations.forEach(ann => {
             addAnnotation(ann);
           });
           
-          // Update prediction to allow re-submission
           if (currentPrediction) {
             setCurrentPrediction({
               ...currentPrediction,
@@ -198,7 +229,6 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
             });
           }
           
-          // Enable annotation mode
           setIsAnnotating(true);
         }
       );
@@ -207,13 +237,11 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
     }
   };
 
-  // Handle run AI prediction
   const handleRunAiPrediction = async () => {
     if (!currentPrediction) return;
     await runAI(currentPrediction.id, token);
   };
 
-  // Handle clear all
   const handleClearAll = () => {
     clearPrediction();
     clearImage();
@@ -221,31 +249,11 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
     setIsAnnotating(false);
   };
 
-  // Auto-fetch comparison when both predictions exist
-  useEffect(() => {
-    if (
-      currentPrediction?.has_student_predictions && 
-      currentPrediction?.has_ai_predictions && 
-      !comparison
-    ) {
-      fetchComparison(currentPrediction.id, token);
-    }
-  }, [currentPrediction?.has_student_predictions, currentPrediction?.has_ai_predictions, comparison, fetchComparison, token, currentPrediction?.id]);
 
-  // Check if all annotations have details
-  const allAnnotationsHaveDetails = annotations.length === 0 || annotations.every(
-    ann => ann.fracture_type
-  );
-
-  // Determine if we show comparison only
-  const showComparisonOnly = currentPrediction?.has_student_predictions && currentPrediction?.has_ai_predictions && comparison;
-
-  // Check if student can submit
-  const canSubmit = currentPrediction && !currentPrediction.has_student_predictions;
 
   return (
     <div className="h-full bg-white border-l border-gray-200 flex flex-col overflow-hidden">
-      {/* Header - Fixed at top */}
+      {/* Header */}
       <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -284,10 +292,15 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
 
             {/* Upload Zone or Image Display */}
             {!image ? (
-              <ImageUploadZone 
-                onImageUpload={handleImageUpload}
-                isUploading={isUploading}
-              />
+              <>
+                <ImageUploadZone 
+                  onImageUpload={handleImageUpload}
+                  isUploading={isUploading}
+                />
+                
+                {/* HISTORY SECTION */}
+                <HistorySection onNavigateToHistory={() => setShowHistory(true)} />
+              </>
             ) : (
               <>
                 {/* Full Width Image Container */}
@@ -319,14 +332,12 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                   <div className="space-y-2">
                     <h4 className="font-semibold text-gray-900 text-sm">Student Actions</h4>
                     
-                    {/* Prediction Status Card */}
                     <PredictionStatusCard
                       currentPrediction={currentPrediction}
                       isRevising={isRevising}
                       onRevise={handleRevisePrediction}
                     />
                     
-                    {/* Action Buttons */}
                     <StudentActionButtons
                       isAnnotating={isAnnotating}
                       annotations={annotations}
@@ -349,7 +360,6 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                       {isRunningAI ? 'Running AI...' : 'Run AI Prediction'}
                     </button>
                     
-                    {/* Info message when AI is locked */}
                     {!currentPrediction?.has_student_predictions && (
                       <div className="bg-yellow-50 rounded-lg p-2 border border-yellow-200">
                         <p className="text-yellow-800 text-xs">
@@ -358,7 +368,6 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                       </div>
                     )}
 
-                    {/* Visibility Controls */}
                     <div className="pt-2 space-y-2">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -397,7 +406,6 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                   </div>
                 </div>
 
-                {/* Annotation Instructions */}
                 {isAnnotating && (
                   <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                     <p className="text-blue-900 font-medium text-sm">💡 Annotation Mode Active</p>
@@ -411,12 +419,9 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                   </div>
                 )}
 
-                {/* Results Section */}
                 {showComparisonOnly ? (
-                  // Show only comparison when both predictions exist
                   <ComparisonResultsCard comparison={comparison} />
                 ) : (
-                  // Show individual detection lists when not both available
                   currentPrediction && (currentPrediction.has_student_predictions || currentPrediction.has_ai_predictions) && (
                     <DetectionLists detections={allDetections} />
                   )

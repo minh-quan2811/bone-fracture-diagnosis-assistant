@@ -353,3 +353,23 @@ def get_prediction_details(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     
     return prediction
+
+@router.get("/predictions", response_model=List[FracturePredictionOut])
+def get_all_predictions(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get all fracture predictions for the CURRENT LOGGED-IN user only.
+    Uses current_user from JWT token to filter predictions.
+    """
+    query = db.query(FracturePrediction).filter(
+        FracturePrediction.user_id == current_user.id
+    )
+    
+    query = query.order_by(FracturePrediction.created_at.desc())
+    predictions = query.offset(skip).limit(limit).all()
+    
+    return predictions
