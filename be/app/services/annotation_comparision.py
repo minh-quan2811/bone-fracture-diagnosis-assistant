@@ -218,23 +218,23 @@ class ComparisonService:
         
         # Overall feedback
         if summary['both_normal']:
-            feedback['overall'] = "✅ Excellent! Both you and the AI agree there are no fractures."
+            feedback['overall'] = "Excellent! Both you and the AI agree there are no fractures."
         elif summary['both_found_fractures']:
             if iou_metrics['f1_score'] >= 0.7:
-                feedback['overall'] = "🎉 Great work! Your detection closely matches the AI."
+                feedback['overall'] = "Great work! Your detection closely matches the AI."
             elif iou_metrics['f1_score'] >= 0.4:
-                feedback['overall'] = "👍 Good effort! Some detections match, but there's room for improvement."
+                feedback['overall'] = "Good effort! Some detections match, but there's room for improvement."
             else:
-                feedback['overall'] = "📚 Keep learning! Your detections differ significantly from the AI."
+                feedback['overall'] = "Keep learning! Your detections differ significantly from the AI."
         elif summary['student_only']:
-            feedback['overall'] = "🤔 You detected fractures that the AI didn't find. Double-check your findings."
+            feedback['overall'] = "You detected fractures that the AI didn't find. Double-check your findings."
         else:  # ai_only
-            feedback['overall'] = "👀 The AI detected fractures you may have missed. Review the image carefully."
+            feedback['overall'] = "The AI detected fractures you may have missed. Review the image carefully."
         
         # Detection performance
         if summary['matched_count'] > 0:
             feedback['detection_performance'] = (
-                f"📍 Detection Match: {summary['matched_count']}/{summary['student_count']} "
+                f"Detection Match: {summary['matched_count']}/{summary['student_count']} "
                 f"of your detections matched AI detections (IoU ≥ {iou_metrics['iou_threshold']}). "
                 f"Average IoU: {iou_metrics['avg_iou']:.2f}"
             )
@@ -243,32 +243,32 @@ class ComparisonService:
         if fracture_metrics['correct_count'] > 0 or fracture_metrics['incorrect_count'] > 0:
             total_classified = fracture_metrics['correct_count'] + fracture_metrics['incorrect_count']
             feedback['classification_performance'] = (
-                f"🔍 Classification: {fracture_metrics['correct_count']}/{total_classified} "
+                f"Classification: {fracture_metrics['correct_count']}/{total_classified} "
                 f"fracture types correct ({fracture_metrics['accuracy']*100:.1f}% accuracy)"
             )
         
         # Suggestions
         if summary['unmatched_student_count'] > 0:
             feedback['suggestions'].append(
-                f"⚠️ You have {summary['unmatched_student_count']} detection(s) that don't match AI predictions. "
+                f"You have {summary['unmatched_student_count']} detection(s) that don't match AI predictions. "
                 "These might be false positives or the AI might have missed them."
             )
         
         if summary['unmatched_ai_count'] > 0:
             feedback['suggestions'].append(
-                f"⚠️ The AI found {summary['unmatched_ai_count']} fracture(s) you didn't detect. "
+                f"The AI found {summary['unmatched_ai_count']} fracture(s) you didn't detect. "
                 "Review these areas to improve your detection skills."
             )
         
         if fracture_metrics['incorrect_count'] > 0:
             feedback['suggestions'].append(
-                f"📖 {fracture_metrics['incorrect_count']} fracture type(s) were misclassified. "
+                f"{fracture_metrics['incorrect_count']} fracture type(s) were misclassified. "
                 "Study the characteristics of different fracture types."
             )
         
         if iou_metrics['avg_iou'] < 0.5 and summary['matched_count'] > 0:
             feedback['suggestions'].append(
-                "🎯 Try to draw bounding boxes more precisely around the fracture areas."
+                "Try to draw bounding boxes more precisely around the fracture areas."
             )
         
         return feedback
