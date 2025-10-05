@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 from app.core.database import engine, Base
-from app.api import auth, student_chat, fracture_prediction
+from app.api import auth, student_chat, fracture_prediction, upload
 
 # create tables
 Base.metadata.create_all(bind=engine)
@@ -31,6 +31,7 @@ app.mount("/uploads", StaticFiles(directory=uploads_path), name="uploads")
 
 app.include_router(auth, prefix="/auth", tags=["Auth"])
 app.include_router(student_chat, prefix="/chat", tags=["Chat"])
+app.include_router(upload, prefix="/upload", tags=["Upload"])
 app.include_router(fracture_prediction, prefix="/api/fracture", tags=["Fracture Detection"])
 
 
@@ -39,8 +40,9 @@ def root():
     return {
         "message": "Medical AI API with YOLOv8 Fracture Detection",
         "endpoints": {
-            "auth": "/api/auth",
-            "chat": "/api/chat",
+            "auth": "/auth",
+            "chat": "/chat",
+            "upload": "/upload",
             "fracture_detection": "/api/fracture"
         }
     }
