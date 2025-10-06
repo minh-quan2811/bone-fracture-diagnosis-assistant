@@ -23,4 +23,6 @@ llama-index-storage-index-store-postgres
 llama-index-vector-stores-qdrant
 llama-index-postprocessor-cohere-rerank
 llama-index-embeddings-cohere
+llama-parse
+llama-index-llms-langchain
 qdrant-client

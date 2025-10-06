@@ -20,3 +20,16 @@ __pycache__/
 *.gif
 *.tiff
 *.webp
+
+# Ignore document files
+*.pdf
+*.docx
+*.doc
+*.txt
+*.rtf
+*.odt
+*.xls
+*.xlsx
+*.csv
+*.ppt
+*.pptx
