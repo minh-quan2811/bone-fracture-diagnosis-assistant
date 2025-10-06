@@ -13,6 +13,7 @@ from app.schemas.fracture_prediction import FracturePredictionOut
 from app.services.bone_fracture_predict.predictor import fracture_predictor
 
 from app.services.rag_service import VectorStorageManager
+from app.services.embedding_service import EmbeddingPipeline
 
 from app.api.api_utils.image_utils import validate_image_file, resize_image_to_640, save_uploaded_file
 from app.api.api_utils.document_utils import validate_document_file, save_document_file
@@ -84,29 +85,25 @@ async def upload_document(
     file: UploadFile = File(...),
     collection_name: str = "medical_documents",
     index_id: str = "medical_doc_index",
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Upload a document (PDF, DOCX) and process it into embeddings.
-    The document will be saved and chunked into the vector database.
+    Upload a document (PDF, DOCX) and process it through the embedding pipeline.
+    The document will be parsed, chunked, embedded, and stored in the vector database.
     """
     validate_document_file(file)
     
+    file_path = None
+    
     try:
-        # Read file content
         file_content = await file.read()
-        
-        # Save document file
         file_path = save_document_file(file_content, file.filename, current_user.id)
         
-        # Process document into nodes
-        nodes = document_embedding_service.process_file_bytes(
-            file_bytes=file_content,
-            filename=file.filename
-        )
+        # Process file through embedding pipeline
+        embedding_pipeline = EmbeddingPipeline()
+        nodes = embedding_pipeline.process_file(file_path=file_path, embed_nodes=True)
         
-        # Initialize storage manager and store nodes
+        # Store nodes in vector database
         storage_manager = VectorStorageManager(
             collection_name=collection_name,
             index_id=index_id
@@ -115,15 +112,27 @@ async def upload_document(
         storage_manager.add_nodes_to_db(nodes=nodes, insert_batch_size=20)
         
         return {
-            "message": "Document uploaded and embedded successfully",
+            "message": "Document uploaded and processed successfully",
+            "file_name": file.filename,
+            "nodes_created": len(nodes),
+            "collection": collection_name,
+            "index_id": index_id
         }
         
     except ValueError as ve:
+        # Clean up file if processing failed
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+        
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(ve)
         )
     except Exception as e:
+        # Clean up file if processing failed
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+        
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Document processing failed: {str(e)}"
