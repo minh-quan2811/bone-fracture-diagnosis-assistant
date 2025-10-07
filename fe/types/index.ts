@@ -24,3 +24,10 @@ export interface User {
   email: string;
   role: string;
 }
+
+// Upload status
+export interface UploadStatusDisplayProps {
+  status: 'idle' | 'uploading' | 'success' | 'error';
+  message?: string;
+  fileName?: string;
+}

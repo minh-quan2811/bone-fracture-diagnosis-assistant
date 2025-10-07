@@ -237,6 +237,8 @@ export default function StudentPage() {
                     onSendMessage={handleSendMessage}
                     loading={loading}
                     placeholder="Ask about bone fractures, treatments, or symptoms..."
+                    token={token}
+                    showDocumentUpload={true}
                   />
                 </div>
               </>
