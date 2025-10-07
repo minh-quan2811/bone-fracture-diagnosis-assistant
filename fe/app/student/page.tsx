@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { decodeToken } from "@/utils/jwt";
 import {
@@ -33,6 +33,17 @@ export default function StudentPage() {
   const [loading, setLoading] = useState(false);
   const [token, setToken] = useState<string>("");
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+  };
+
+  // Scroll to bottom when messages change or loading state changes
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, loading]);
 
   useEffect(() => {
     // Prevent body scroll
@@ -95,6 +106,8 @@ export default function StudentPage() {
     try {
       const msgs = await getMessages(conversationId, token);
       setMessages(msgs);
+      // Scroll to bottom immediately after loading messages
+      setTimeout(() => scrollToBottom('auto'), 100);
     } catch (error) {
       console.error("Failed to load messages:", error);
       setMessages([]);
@@ -169,7 +182,7 @@ export default function StudentPage() {
   return (
     <DashboardLayout>
       {/* Sidebar - conditionally rendered with transition */}
-      <div className={`${sidebarVisible ? 'w-64' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden`}>
+      <div className={`${sidebarVisible ? 'w-56' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden`}>
         <ChatSidebar
           user={user}
           conversations={conversations}
@@ -184,7 +197,7 @@ export default function StudentPage() {
       {/* Main content area - adjust width based on sidebar visibility */}
       <div className={`flex-1 flex flex-col min-h-0 overflow-hidden ${sidebarVisible ? '' : 'w-full'}`}>
         <ResizableLayout className="flex-1">
-          <ResizableLayout.Panel defaultSize={55} minSize={45} className="flex flex-col overflow-hidden">
+          <ResizableLayout.Panel defaultSize={60} minSize={40} className="flex flex-col overflow-hidden">
             {activeConversation ? (
               <>
                 {/* Chat Header with sidebar toggle only when sidebar is hidden */}
@@ -205,7 +218,7 @@ export default function StudentPage() {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
+                <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
                   {messages.length === 0 ? (
                     <EmptyMessageState userRole={user?.role} />
                   ) : (
@@ -214,6 +227,7 @@ export default function StudentPage() {
                         <MessageBubble key={message.id} message={message} />
                       ))}
                       {loading && <TypingIndicator />}
+                      <div ref={messagesEndRef} />
                     </>
                   )}
                 </div>

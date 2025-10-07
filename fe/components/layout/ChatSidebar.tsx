@@ -28,11 +28,11 @@ export function ChatSidebar({
   };
 
   return (
-    <div className="w-64 bg-white shadow-lg flex flex-col h-full overflow-hidden">
+    <div className="w-56 bg-white shadow-lg flex flex-col h-full overflow-hidden">
       {/* Header - Fixed at top with close button */}
       <div className="flex-shrink-0 p-4 border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-lg font-bold text-gray-900">🩺 Bone Helper</h1>
+          <h1 className="text-lg font-bold text-gray-900">Bone Helper</h1>
           <SidebarToggleButton 
             isVisible={true}
             onToggle={onToggleSidebar}
@@ -48,7 +48,7 @@ export function ChatSidebar({
               variant={user.role === "student" ? "student" : "teacher"}
               size="sm"
             >
-              {user.role === "student" ? "🎓 Student" : "👨‍🏫 Teacher"}
+              {user.role === "student" ? "Student" : "Teacher"}
             </Badge>
           </div>
         )}
