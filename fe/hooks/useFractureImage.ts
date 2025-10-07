@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { uploadFractureImage } from '@/lib/fracture-api';
+import { uploadFractureImage } from '@/lib/upload';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 

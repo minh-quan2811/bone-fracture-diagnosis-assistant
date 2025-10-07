@@ -105,19 +105,20 @@ class BoneFracturePredictorModel:
 fracture_predictor = BoneFracturePredictorModel()
 
 # Testing predictions
-if __name__ == "__main__":
-    print("\nRunning self-test for BoneFracturePredictorModel...\n")
+# if __name__ == "__main__":
+#     print("\nRunning self-test for BoneFracturePredictorModel...\n")
 
-    MODEL_PATH = r"C:\Users\Admin\Desktop\School_Projects\Bone_Fractures\be\app\services\bone_fracture_predict\fracture_model.pt"
-    TEST_IMAGE = r"C:\Users\Admin\Downloads\7.jpg"
+#     MODEL_PATH = r"C:\Users\Admin\Desktop\School_Projects\Bone_Fractures\be\app\services\bone_fracture_predict\fracture_model.pt"
+#     TEST_IMAGE = r"C:\Users\Admin\Downloads\7.jpg"
+#     # Model classes: {0: 'comminuted', 1: 'compound', 2: 'greenstick', 3: 'splint', 4: 'transverse'}
 
-    # Initialize model
-    model = BoneFracturePredictorModel(model_path=MODEL_PATH)
+#     # Initialize model
+#     model = BoneFracturePredictorModel(model_path=MODEL_PATH)
 
-    if os.path.exists(TEST_IMAGE):
-        print(f"Running detection on: {TEST_IMAGE}\n")
-        result = model.predict_from_file(TEST_IMAGE)
-        print("Detection Result:")
-        print(result)
-    else:
-        print(f"Test image not found at: {TEST_IMAGE}")
+#     if os.path.exists(TEST_IMAGE):
+#         print(f"Running detection on: {TEST_IMAGE}\n")
+#         result = model.predict_from_file(TEST_IMAGE)
+#         print("Detection Result:")
+#         print(result)
+#     else:
+#         print(f"Test image not found at: {TEST_IMAGE}")
