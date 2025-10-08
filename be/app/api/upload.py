@@ -4,13 +4,17 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
 from PIL import Image
 import io
+from typing import List
 
 from app.core.database import get_db
 from app.api.auth import get_current_user
 from app.models.user import User
 from app.models.fracture_prediction import FracturePrediction
+from app.models.document_upload import DocumentUpload
 from app.schemas.fracture_prediction import FracturePredictionOut
+from app.schemas.document_upload import DocumentUploadOut
 from app.services.bone_fracture_predict.predictor import fracture_predictor
+from app.enums.document_status import DocumentStatus
 
 from app.services.rag_service import VectorStorageManager
 from app.services.embedding_service import EmbeddingPipeline
@@ -80,11 +84,12 @@ async def upload_image(
 
 
 # DOCUMENT UPLOAD
-@router.post("/document")
+@router.post("/document", response_model=DocumentUploadOut)
 async def upload_document(
     file: UploadFile = File(...),
     collection_name: str = "medical_documents",
     index_id: str = "medical_doc_index",
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -95,9 +100,24 @@ async def upload_document(
     
     file_path = None
     
+    # Create initial document upload record
+    db_document = DocumentUpload(
+        user_id=current_user.id,
+        filename=file.filename,
+        file_type=os.path.splitext(file.filename)[1][1:].lower(),
+        status=DocumentStatus.UPLOADING
+    )
+    db.add(db_document)
+    db.commit()
+    db.refresh(db_document)
+    
     try:
         file_content = await file.read()
         file_path = save_document_file(file_content, file.filename, current_user.id)
+        
+        # Update status to processing
+        db_document.status = DocumentStatus.PROCESSING
+        db.commit()
         
         # Process file through embedding pipeline
         embedding_pipeline = EmbeddingPipeline()
@@ -111,15 +131,18 @@ async def upload_document(
         
         storage_manager.add_nodes_to_db(nodes=nodes, insert_batch_size=20)
         
-        return {
-            "message": "Document uploaded and processed successfully",
-            "file_name": file.filename,
-            "nodes_created": len(nodes),
-            "collection": collection_name,
-            "index_id": index_id
-        }
+        # Update status to completed
+        db_document.status = DocumentStatus.COMPLETED
+        db.commit()
+        db.refresh(db_document)
+        
+        return db_document
         
     except ValueError as ve:
+        # Update status to failed
+        db_document.status = DocumentStatus.FAILED
+        db.commit()
+        
         # Clean up file if processing failed
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
@@ -129,6 +152,10 @@ async def upload_document(
             detail=str(ve)
         )
     except Exception as e:
+        # Update status to failed
+        db_document.status = DocumentStatus.FAILED
+        db.commit()
+        
         # Clean up file if processing failed
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
@@ -137,3 +164,18 @@ async def upload_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Document processing failed: {str(e)}"
         )
+
+
+# GET DOCUMENT UPLOADS HISTORY
+@router.get("/documents/history", response_model=List[DocumentUploadOut])
+async def get_document_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all document uploads for the current user"""
+    documents = db.query(DocumentUpload)\
+        .filter(DocumentUpload.user_id == current_user.id)\
+        .order_by(DocumentUpload.created_at.desc())\
+        .all()
+    
+    return documents
