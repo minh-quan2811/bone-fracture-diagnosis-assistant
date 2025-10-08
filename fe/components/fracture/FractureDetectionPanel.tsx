@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { User } from '@/types';
+import { User, DocumentUpload } from '@/types';
 import { useFractureImage } from '@/hooks/useFractureImage';
 import { useAnnotationDrawing } from '@/hooks/useAnnotationDrawing';
 import { useFracturePredictionAPI } from '@/hooks/useFracturePredictionAPI';
@@ -23,9 +23,16 @@ import { DocumentHistoryPage } from './document/DocumentHistoryPage';
 interface FractureDetectionPanelProps {
   token: string;
   user: User | null;
+  documentHistory?: DocumentUpload[];
+  onRefreshDocuments?: () => void;
 }
 
-export function FractureDetectionPanel({ token, user }: FractureDetectionPanelProps) {
+export function FractureDetectionPanel({ 
+  token, 
+  user,
+  documentHistory = [],
+  onRefreshDocuments
+}: FractureDetectionPanelProps) {
   const canvasRef = useRef<AnnotationCanvasRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -304,7 +311,10 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                 <HistorySection onNavigateToHistory={() => setShowHistory(true)} />
                 
                 {/* DOCUMENT HISTORY SECTION */}
-                <DocumentHistorySection onNavigateToHistory={() => setShowDocumentHistory(true)} />
+                <DocumentHistorySection 
+                  onNavigateToHistory={() => setShowDocumentHistory(true)}
+                  recentDocuments={documentHistory}
+                />
               </>
             ) : (
               <>

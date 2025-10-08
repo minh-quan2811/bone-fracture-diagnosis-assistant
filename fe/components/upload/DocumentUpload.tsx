@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { DocumentUploadButton } from './DocumentUploadButton';
-import { UploadStatusDisplay } from './UploadStatusDisplay';
 import { uploadDocument } from '@/lib/upload';
 
 interface DocumentUpload {
@@ -17,26 +16,22 @@ interface DocumentUploadProps {
   token: string;
   onUploadSuccess?: (response: DocumentUpload) => void;
   onUploadError?: (error: string) => void;
+  onUploadStart?: (filename: string) => void;
   className?: string;
   collectionName?: string;
   indexId?: string;
-}
-
-interface UploadStatus {
-  status: 'idle' | 'uploading' | 'success' | 'error';
-  message?: string;
 }
 
 export function DocumentUpload({ 
   token, 
   onUploadSuccess,
   onUploadError,
+  onUploadStart,
   className = "",
   collectionName = "medical_documents",
   indexId = "medical_doc_index"
 }: DocumentUploadProps) {
-  const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ status: 'idle' });
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const validateFile = (file: File): string | null => {
     const validTypes = [
@@ -61,64 +56,29 @@ export function DocumentUpload({
     const error = validateFile(file);
     
     if (error) {
-      setUploadStatus({ status: 'error', message: error });
       onUploadError?.(error);
-      setTimeout(() => setUploadStatus({ status: 'idle' }), 5000);
       return;
     }
 
-    setSelectedFile(file);
-    setUploadStatus({ 
-      status: 'uploading', 
-      message: 'Processing document...' 
-    });
+    setIsUploading(true);
+    onUploadStart?.(file.name);
 
     try {
       const response = await uploadDocument(file, token, collectionName, indexId);
-      
-      setUploadStatus({ 
-        status: 'success', 
-        message: `Document uploaded successfully. Status: ${response.status}` 
-      });
-      
       onUploadSuccess?.(response);
-      
-      setTimeout(() => {
-        setUploadStatus({ status: 'idle' });
-        setSelectedFile(null);
-      }, 5000);
-      
     } catch (error: any) {
       const errorMessage = error.message || 'Failed to upload document';
-      setUploadStatus({ 
-        status: 'error', 
-        message: errorMessage 
-      });
-      
       onUploadError?.(errorMessage);
-      
-      setTimeout(() => {
-        setUploadStatus({ status: 'idle' });
-        setSelectedFile(null);
-      }, 8000);
+    } finally {
+      setIsUploading(false);
     }
   };
 
   return (
     <div className={className}>
-      {uploadStatus.status !== 'idle' && (
-        <div className="mb-3">
-          <UploadStatusDisplay 
-            status={uploadStatus.status}
-            message={uploadStatus.message}
-            fileName={selectedFile?.name}
-          />
-        </div>
-      )}
-      
       <DocumentUploadButton 
         onFileSelect={handleFileSelect}
-        disabled={uploadStatus.status === 'uploading'}
+        disabled={isUploading}
       />
     </div>
   );

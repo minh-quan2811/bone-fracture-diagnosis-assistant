@@ -8,6 +8,8 @@ interface ChatInputProps {
   placeholder?: string;
   token?: string;
   showDocumentUpload?: boolean;
+  onDocumentUploadStart?: (filename: string) => void;
+  onDocumentUploadComplete?: () => void;
 }
 
 export function ChatInput({ 
@@ -15,7 +17,9 @@ export function ChatInput({
   loading, 
   placeholder = "Type your message...",
   token,
-  showDocumentUpload = false
+  showDocumentUpload = false,
+  onDocumentUploadStart,
+  onDocumentUploadComplete
 }: ChatInputProps) {
   const [inputMessage, setInputMessage] = useState("");
 
@@ -33,12 +37,16 @@ export function ChatInput({
     }
   };
 
-  const handleUploadSuccess = (response: any) => {
-    console.log('Document uploaded successfully:', response);
+  const handleUploadSuccess = () => {
+    onDocumentUploadComplete?.();
   };
 
-  const handleUploadError = (error: string) => {
-    console.error('Document upload error:', error);
+  const handleUploadError = () => {
+    onDocumentUploadComplete?.();
+  };
+
+  const handleUploadStart = (filename: string) => {
+    onDocumentUploadStart?.(filename);
   };
 
   return (
@@ -49,6 +57,7 @@ export function ChatInput({
             token={token}
             onUploadSuccess={handleUploadSuccess}
             onUploadError={handleUploadError}
+            onUploadStart={handleUploadStart}
           />
         )}
         

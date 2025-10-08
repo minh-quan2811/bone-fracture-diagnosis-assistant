@@ -7,7 +7,9 @@ import {
   getConversations,
   sendMessage,
   getMessages,
-  getMe
+  getMe,
+  getDocumentHistory,
+  DocumentUpload as DocumentUploadType
 } from "@/lib/api";
 
 import { Message, Conversation, ConversationBase, User } from "@/types";
@@ -33,6 +35,9 @@ export default function StudentPage() {
   const [loading, setLoading] = useState(false);
   const [token, setToken] = useState<string>("");
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [documentHistory, setDocumentHistory] = useState<DocumentUploadType[]>([]);
+  const [shouldRefreshDocs, setShouldRefreshDocs] = useState(0);
+  const [uploadingDocs, setUploadingDocs] = useState<Map<string, DocumentUploadType>>(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -80,7 +85,15 @@ export default function StudentPage() {
     setAuthorized(true);
     loadUserData(storedToken);
     loadConversations(storedToken);
+    loadDocumentHistory(storedToken);
   }, [router]);
+
+  // Refresh document history when shouldRefreshDocs changes
+  useEffect(() => {
+    if (token && shouldRefreshDocs > 0) {
+      loadDocumentHistory(token);
+    }
+  }, [shouldRefreshDocs, token]);
 
   const loadUserData = async (authToken: string) => {
     try {
@@ -99,6 +112,15 @@ export default function StudentPage() {
       setConversations(convs);
     } catch (error) {
       console.error("Failed to load conversations:", error);
+    }
+  };
+
+  const loadDocumentHistory = async (authToken: string) => {
+    try {
+      const docs = await getDocumentHistory(authToken);
+      setDocumentHistory(docs);
+    } catch (error) {
+      console.error("Failed to load document history:", error);
     }
   };
 
@@ -171,6 +193,33 @@ export default function StudentPage() {
     setSidebarVisible(!sidebarVisible);
   };
 
+  const handleDocumentUploadStart = (filename: string) => {
+    // Add a temporary "uploading" document to the history
+    const tempDoc: DocumentUploadType = {
+      id: Date.now(), // Temporary ID
+      user_id: user?.id || 0,
+      filename: filename,
+      file_type: null,
+      status: 'uploading',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    setUploadingDocs(prev => new Map(prev).set(filename, tempDoc));
+  };
+
+  const handleDocumentUploadComplete = () => {
+    // Clear uploading docs and trigger refresh
+    setUploadingDocs(new Map());
+    setShouldRefreshDocs(prev => prev + 1);
+  };
+
+  // Combine real document history with uploading documents
+  const combinedDocumentHistory = [
+    ...Array.from(uploadingDocs.values()),
+    ...documentHistory
+  ];
+
   if (authorized === null) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -239,6 +288,8 @@ export default function StudentPage() {
                     placeholder="Ask about bone fractures, treatments, or symptoms..."
                     token={token}
                     showDocumentUpload={true}
+                    onDocumentUploadStart={handleDocumentUploadStart}
+                    onDocumentUploadComplete={handleDocumentUploadComplete}
                   />
                 </div>
               </>
@@ -261,7 +312,12 @@ export default function StudentPage() {
           <ResizableLayout.Splitter />
 
           <ResizableLayout.Panel defaultSize={40} minSize={25} className="flex flex-col overflow-hidden">
-            <FractureDetectionPanel token={token} user={user} />
+            <FractureDetectionPanel 
+              token={token} 
+              user={user}
+              documentHistory={combinedDocumentHistory}
+              onRefreshDocuments={() => setShouldRefreshDocs(prev => prev + 1)}
+            />
           </ResizableLayout.Panel>
         </ResizableLayout>
       </div>
