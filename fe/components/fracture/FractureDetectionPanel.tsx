@@ -17,6 +17,8 @@ import { Detection } from '@/types/fracture';
 // Import History Components
 import { HistorySection } from './history/HistorySection';
 import { HistoryPage } from './history/HistoryPage';
+import { DocumentHistorySection } from './document/DocumentHistorySection';
+import { DocumentHistoryPage } from './document/DocumentHistoryPage';
 
 interface FractureDetectionPanelProps {
   token: string;
@@ -29,6 +31,7 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
 
   // History navigation state
   const [showHistory, setShowHistory] = React.useState(false);
+  const [showDocumentHistory, setShowDocumentHistory] = React.useState(false);
 
   // UI states
   const [showStudentAnnotations, setShowStudentAnnotations] = React.useState(true);
@@ -117,9 +120,13 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
     currentPrediction?.id
   ]);
 
-
+  // Show history pages
   if (showHistory) {
     return <HistoryPage token={token} onBack={() => setShowHistory(false)} />;
+  }
+
+  if (showDocumentHistory) {
+    return <DocumentHistoryPage token={token} onBack={() => setShowDocumentHistory(false)} />;
   }
 
   // EVENT HANDLERS
@@ -246,8 +253,6 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
     setIsAnnotating(false);
   };
 
-
-
   return (
     <div className="h-full bg-white border-l border-gray-200 flex flex-col overflow-hidden">
       {/* Header */}
@@ -276,7 +281,7 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
             onClick={handleClearAll}
             className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
           >
-            🗑️ Clear
+            Clear
           </button>
         </div>
       </div>
@@ -295,12 +300,15 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                   isUploading={isUploading}
                 />
                 
-                {/* HISTORY SECTION */}
+                {/* PREDICTION HISTORY SECTION */}
                 <HistorySection onNavigateToHistory={() => setShowHistory(true)} />
+                
+                {/* DOCUMENT HISTORY SECTION */}
+                <DocumentHistorySection onNavigateToHistory={() => setShowDocumentHistory(true)} />
               </>
             ) : (
               <>
-                {/* Scrollable Image Container - Like History Page */}
+                {/* Scrollable Image Container */}
                 <div 
                   ref={containerRef} 
                   className="w-full bg-gray-100 rounded-lg border-2 border-gray-300 flex items-center justify-center p-4 overflow-auto"
@@ -360,7 +368,7 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                     {!currentPrediction?.has_student_predictions && (
                       <div className="bg-yellow-50 rounded-lg p-2 border border-yellow-200">
                         <p className="text-yellow-800 text-xs">
-                          🔒 Submit your prediction first to unlock AI comparison
+                          Submit your prediction first to unlock AI comparison
                         </p>
                       </div>
                     )}
@@ -374,7 +382,7 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                           className="form-checkbox h-4 w-4 text-blue-600 rounded"
                         />
                         <span className="text-sm text-gray-900">
-                          🎓 Show Student ({currentPrediction?.student_prediction_count || annotations.length})
+                          Show Student ({currentPrediction?.student_prediction_count || annotations.length})
                         </span>
                       </label>
                       
@@ -386,7 +394,7 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
                           className="form-checkbox h-4 w-4 text-red-600 rounded"
                         />
                         <span className="text-sm text-gray-900">
-                          🤖 Show AI ({currentPrediction?.ai_prediction_count || 0})
+                          Show AI ({currentPrediction?.ai_prediction_count || 0})
                         </span>
                       </label>
                     </div>
@@ -405,7 +413,7 @@ export function FractureDetectionPanel({ token, user }: FractureDetectionPanelPr
 
                 {isAnnotating && (
                   <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                    <p className="text-blue-900 font-medium text-sm">💡 Annotation Mode Active</p>
+                    <p className="text-blue-900 font-medium text-sm">Annotation Mode Active</p>
                     <p className="text-blue-800 text-sm mt-1">
                       Click and drag on the image to mark fracture areas. 
                       Select fracture type for each annotation on the right.

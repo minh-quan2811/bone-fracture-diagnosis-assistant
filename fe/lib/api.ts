@@ -109,3 +109,26 @@ export async function sendMessage(conversationId: number, content: string, token
   
   return res.json();
 }
+
+// Document Upload History API
+export interface DocumentUpload {
+  id: number;
+  user_id: number;
+  filename: string;
+  file_type: string | null;
+  status: 'uploading' | 'processing' | 'completed' | 'failed';
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getDocumentHistory(token: string): Promise<DocumentUpload[]> {
+  const res = await fetch(`${API_BASE}/upload/documents/history`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  
+  if (!res.ok) {
+    throw new Error('Failed to fetch document history');
+  }
+  
+  return res.json();
+}

@@ -10,6 +10,16 @@ export interface UploadResponse {
   index_id: string;
 }
 
+export interface DocumentUploadResponse {
+  id: number;
+  user_id: number;
+  filename: string;
+  file_type: string | null;
+  status: 'uploading' | 'processing' | 'completed' | 'failed';
+  created_at: string;
+  updated_at: string;
+}
+
 export async function uploadFractureImage(file: File, token: string) {
   const formData = new FormData();
   formData.append('file', file);
@@ -33,7 +43,7 @@ export async function uploadDocument(
   token: string,
   collectionName: string = "medical_documents",
   indexId: string = "medical_doc_index"
-): Promise<UploadResponse> {
+): Promise<DocumentUploadResponse> {
   const formData = new FormData();
   formData.append('file', file);
   

@@ -1,11 +1,21 @@
 import { useState } from 'react';
 import { DocumentUploadButton } from './DocumentUploadButton';
 import { UploadStatusDisplay } from './UploadStatusDisplay';
-import { uploadDocument, UploadResponse } from '@/lib/upload';
+import { uploadDocument } from '@/lib/upload';
+
+interface DocumentUpload {
+  id: number;
+  user_id: number;
+  filename: string;
+  file_type: string | null;
+  status: 'uploading' | 'processing' | 'completed' | 'failed';
+  created_at: string;
+  updated_at: string;
+}
 
 interface DocumentUploadProps {
   token: string;
-  onUploadSuccess?: (response: UploadResponse) => void;
+  onUploadSuccess?: (response: DocumentUpload) => void;
   onUploadError?: (error: string) => void;
   className?: string;
   collectionName?: string;
@@ -68,7 +78,7 @@ export function DocumentUpload({
       
       setUploadStatus({ 
         status: 'success', 
-        message: `Successfully processed ${response.nodes_created} chunks from your document.` 
+        message: `Document uploaded successfully. Status: ${response.status}` 
       });
       
       onUploadSuccess?.(response);
