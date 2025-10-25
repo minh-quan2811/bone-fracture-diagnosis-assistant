@@ -133,7 +133,14 @@ export function FractureDetectionPanel({
   }
 
   if (showDocumentHistory) {
-    return <DocumentHistoryPage token={token} onBack={() => setShowDocumentHistory(false)} />;
+    return (
+      <DocumentHistoryPage 
+        token={token} 
+        onBack={() => setShowDocumentHistory(false)}
+        documents={documentHistory}
+        onRefresh={onRefreshDocuments}
+      />
+    );
   }
 
   // EVENT HANDLERS
@@ -371,7 +378,6 @@ export function FractureDetectionPanel({
                       className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                       title={!currentPrediction?.has_student_predictions ? 'Submit your prediction first' : ''}
                     >
-                      <span className="text-lg">{isRunningAI ? '⏳' : '🤖'}</span>
                       {isRunningAI ? 'Running AI...' : 'Run AI Prediction'}
                     </button>
                     

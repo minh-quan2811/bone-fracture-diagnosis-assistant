@@ -18,12 +18,10 @@ export function ComparisonResultsCard({ comparison }: ComparisonResultsCardProps
 
   if (comparison_metrics.both_normal) {
     resultType = 'both_normal';
-    resultIcon = '✅';
     resultText = 'Both Agree: No Fracture';
     resultColor = 'bg-green-50 border-green-300 text-green-900';
   } else if (comparison_metrics.both_found_fractures) {
     resultType = 'agreement';
-    resultIcon = '⚖️';
     resultText = 'Both Found Fractures';
     resultColor = 'bg-orange-50 border-orange-300 text-orange-900';
   } else if (comparison_metrics.student_only) {
@@ -33,12 +31,10 @@ export function ComparisonResultsCard({ comparison }: ComparisonResultsCardProps
     resultColor = 'bg-blue-50 border-blue-300 text-blue-900';
   } else if (comparison_metrics.ai_only) {
     resultType = 'ai_only';
-    resultIcon = '🤖';
     resultText = 'Only AI Found Fracture';
     resultColor = 'bg-red-50 border-red-300 text-red-900';
   } else {
     resultType = 'disagreement';
-    resultIcon = '⚠️';
     resultText = 'Results Differ';
     resultColor = 'bg-yellow-50 border-yellow-300 text-yellow-900';
   }
@@ -46,7 +42,6 @@ export function ComparisonResultsCard({ comparison }: ComparisonResultsCardProps
   return (
     <div className={`rounded-lg p-4 border-2 ${resultColor}`}>
       <div className="flex items-center gap-3 mb-4">
-        <span className="text-3xl">{resultIcon}</span>
         <div>
           <h3 className="font-bold text-lg">Comparison Results</h3>
           <p className="text-sm font-medium">{resultText}</p>
@@ -213,7 +208,7 @@ export function ComparisonResultsCard({ comparison }: ComparisonResultsCardProps
       {/* Suggestions */}
       {feedback?.suggestions && feedback.suggestions.length > 0 && (
         <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-          <div className="font-semibold text-blue-900 mb-2 text-sm">💡 Suggestions for Improvement</div>
+          <div className="font-semibold text-blue-900 mb-2 text-sm">Suggestions for Improvement</div>
           <div className="space-y-1">
             {feedback.suggestions.map((suggestion, index) => (
               <p key={index} className="text-xs text-blue-800">{suggestion}</p>

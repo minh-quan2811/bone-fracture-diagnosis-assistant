@@ -17,7 +17,7 @@ export function DetectionLists({ detections }: DetectionListsProps) {
       {studentDetections.length > 0 && (
         <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
           <h4 className="font-semibold text-blue-900 mb-3 text-base">
-            🎓 Your Predictions ({studentDetections.length})
+              Your Predictions ({studentDetections.length})
           </h4>
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {studentDetections.map((detection, index) => (
@@ -48,7 +48,7 @@ export function DetectionLists({ detections }: DetectionListsProps) {
       {aiDetections.length > 0 && (
         <div className="bg-red-50 rounded-lg p-4 border border-red-200">
           <h4 className="font-semibold text-red-900 mb-3 text-base">
-            🤖 AI Predictions ({aiDetections.length})
+              AI Predictions ({aiDetections.length})
           </h4>
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {aiDetections.map((detection, index) => (
