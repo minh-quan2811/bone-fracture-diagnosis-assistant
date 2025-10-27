@@ -1,108 +1,117 @@
-import os
-import cv2
+from typing import List, Dict, Any
 import numpy as np
-from typing import Dict
+from PIL import Image
+import io
 from ultralytics import YOLO
-import time
+import os
 
+# Model class mapping
+CLASS_TO_FRACTURE_TYPE = {
+    0: "comminuted",
+    1: "greenstick",
+    2: "oblique",
+    3: "spiral",
+    4: "transverse"
+}
 
-class BoneFracturePredictorModel:
-    def __init__(self, model_path: str = None):
-        self.model_path = model_path or os.path.join(os.path.dirname(__file__), "fracture_model.pt")
+class FracturePredictor:
+    """Service for running bone fracture predictions"""
+    
+    def __init__(self, model_path: str = None, confidence_threshold: float = 0.25):
+        """
+        Initialize the predictor
+        """
+        self.model_path = model_path
+        self.confidence_threshold = confidence_threshold
         self.model = None
-        self.confidence_threshold = 0.25
-        self.iou_threshold = 0.45
-        self.load_model()
-
-    def load_model(self):
-        """Load YOLOv8 model from .pt file."""
+        
+        # Load model if path provided
+        if model_path:
+            self._load_model()
+    
+    def _load_model(self):
+        """Load the YOLO model"""
         try:
-            if os.path.exists(self.model_path):
-                self.model = YOLO(self.model_path)
-                print(f"YOLOv8 fracture model loaded from {self.model_path}")
-                print(f"Model classes: {self.model.names}")
-            else:
-                raise FileNotFoundError(f"Model file not found: {self.model_path}")
+            self.model = YOLO(self.model_path)
+            print(f"Fracture detection model loaded from {self.model_path}")
         except Exception as e:
-            raise RuntimeError(f"Failed to load YOLOv8 model: {e}")
-
-    def predict(self, image_data: bytes) -> Dict:
+            print(f"Failed to load model: {e}")
+            self.model = None
+    
+    def predict(self, image_bytes: bytes) -> Dict[str, Any]:
         """
-        Run real YOLOv8 inference on an input image (in bytes).
-        Returns dictionary with detection results.
+        Run prediction on image bytes
         """
-        try:
-            # Decode image bytes to OpenCV array
-            nparr = np.frombuffer(image_data, np.uint8)
-            image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            if image is None:
-                raise ValueError("Could not decode input image.")
-
-            height, width = image.shape[:2]
-            channels = image.shape[2] if len(image.shape) > 2 else 1
-
-            # Run inference
-            start_time = time.time()
-            results = self.model.predict(
-                source=image,
-                conf=self.confidence_threshold,
-                iou=self.iou_threshold,
-                verbose=False
-            )
-            inference_time = time.time() - start_time
-
-            # Parse results
-            detections = []
-            max_confidence = 0.0
-
-            for result in results:
-                if result.boxes is not None and len(result.boxes) > 0:
-                    for box in result.boxes:
-                        xyxy = box.xyxy[0].cpu().numpy()
-                        conf = float(box.conf[0].cpu().numpy())
-                        cls_id = int(box.cls[0].cpu().numpy())
-                        class_name = self.model.names.get(cls_id, f"class_{cls_id}")
-
-                        x1, y1, x2, y2 = map(int, xyxy)
-                        detections.append({
-                            "class_id": cls_id,
-                            "class_name": class_name,
-                            "confidence": conf,
-                            "bounding_box": {
-                                "x_min": x1,
-                                "y_min": y1,
-                                "x_max": x2,
-                                "y_max": y2,
-                                "width": x2 - x1,
-                                "height": y2 - y1
-                            }
-                        })
-                        max_confidence = max(max_confidence, conf)
-
-            return {
-                "has_fracture": len(detections) > 0,
-                "detection_count": len(detections),
-                "max_confidence": max_confidence if detections else None,
-                "detections": detections,
-                "inference_time": round(inference_time, 4),
-                "image_dimensions": {"width": width, "height": height, "channels": channels}
-            }
-
-        except Exception as e:
-            raise RuntimeError(f"YOLOv8 prediction failed: {e}")
-
-    # Testing Utility
-    def predict_from_file(self, file_path: str) -> Dict:
-        """Run prediction directly from an image file path."""
-        try:
-            with open(file_path, 'rb') as f:
-                image_data = f.read()
-            return self.predict(image_data)
-        except Exception as e:
-            raise RuntimeError(f"File prediction failed: {e}")
+        if self.model is None:
+            raise ValueError("Model not loaded. Cannot run predictions.")
+        
+        # Load image
+        image = Image.open(io.BytesIO(image_bytes))
+        
+        # Convert to RGB if needed
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Run inference
+        results = self.model.predict(
+            image,
+            conf=self.confidence_threshold,
+            verbose=False
+        )
+        
+        # Process results
+        detections = []
+        max_confidence = 0.0
+        
+        if len(results) > 0:
+            result = results[0]
+            
+            if result.boxes is not None and len(result.boxes) > 0:
+                boxes = result.boxes.xyxy.cpu().numpy()  # [x_min, y_min, x_max, y_max]
+                confidences = result.boxes.conf.cpu().numpy()
+                class_ids = result.boxes.cls.cpu().numpy().astype(int)
+                
+                for box, conf, class_id in zip(boxes, confidences, class_ids):
+                    x_min, y_min, x_max, y_max = box
+                    width = int(x_max - x_min)
+                    height = int(y_max - y_min)
+                    
+                    # Map class_id to fracture_type
+                    fracture_type = CLASS_TO_FRACTURE_TYPE.get(class_id, None)
+                    
+                    detection = {
+                        "class_id": int(class_id),
+                        "class_name": "fracture",
+                        "confidence": float(conf),
+                        "fracture_type": fracture_type,
+                        "bounding_box": {
+                            "x_min": int(x_min),
+                            "y_min": int(y_min),
+                            "x_max": int(x_max),
+                            "y_max": int(y_max),
+                            "width": width,
+                            "height": height
+                        }
+                    }
+                    
+                    detections.append(detection)
+                    max_confidence = max(max_confidence, float(conf))
+        
+        return {
+            "has_fracture": len(detections) > 0,
+            "detection_count": len(detections),
+            "max_confidence": max_confidence if len(detections) > 0 else None,
+            "detections": detections,
+            "inference_time": 0.0
+        }
 
 
-fracture_predictor = BoneFracturePredictorModel()
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+fracture_predictor = FracturePredictor(
+    model_path=os.path.join(current_dir, "Our_YOLO.pt"),
+    confidence_threshold=0.25
+)
 
 # Testing predictions
 # if __name__ == "__main__":

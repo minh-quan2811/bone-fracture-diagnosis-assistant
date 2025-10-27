@@ -8,17 +8,14 @@ interface AnnotationAttributeSelectorProps {
   isAnnotating: boolean;
 }
 
+// model prediction classes: {0: 'comminuted', 1: 'greenstick', 2: 'oblique', 3: 'spiral', 4: 'transverse'}
 const FRACTURE_TYPES = [
   { value: '', label: 'Select fracture type...' },
-  { value: 'greenstick', label: 'Greenstick' },
-  { value: 'transverse', label: 'Transverse' },
   { value: 'comminuted', label: 'Comminuted' },
-  { value: 'spiral', label: 'Spiral' },
-  { value: 'compound', label: 'Compound' },
+  { value: 'greenstick', label: 'Greenstick' },
   { value: 'oblique', label: 'Oblique' },
-  { value: 'compression', label: 'Compression' },
-  { value: 'avulsion', label: 'Avulsion' },
-  { value: 'hairline', label: 'Hairline' }
+  { value: 'spiral', label: 'Spiral' },
+  { value: 'transverse', label: 'Transverse' }
 ];
 
 export function AnnotationAttributeSelector({
@@ -57,7 +54,7 @@ export function AnnotationAttributeSelector({
         </h4>
         {!allAnnotationsComplete && (
           <span className="text-xs text-red-600 font-medium">
-            ⚠️ Incomplete
+            Incomplete
           </span>
         )}
       </div>
@@ -142,7 +139,7 @@ export function AnnotationAttributeSelector({
       {!allAnnotationsComplete && (
         <div className="bg-yellow-50 rounded-lg p-2 border border-yellow-200">
           <p className="text-yellow-800 text-xs">
-            ⚠️ Please select fracture type for all annotations
+            Please select fracture type for all annotations
           </p>
         </div>
       )}

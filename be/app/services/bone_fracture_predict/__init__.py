@@ -1,3 +1,3 @@
-from .predictor import fracture_predictor, BoneFracturePredictorModel
+from .predictor import fracture_predictor, FracturePredictor
 
-__all__ = ["fracture_predictor", "BoneFracturePredictorModel"]
+__all__ = ["fracture_predictor", "FracturePredictor"]

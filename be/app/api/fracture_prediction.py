@@ -9,6 +9,7 @@ from app.api.auth import get_current_user
 from app.models.user import User
 from app.models.fracture_prediction import FracturePrediction, FractureDetection
 from app.enums.prediction_source import PredictionSource
+from app.enums.fracture_type import FractureType
 from app.schemas.fracture_prediction import (
     FracturePredictionOut,
     StudentAnnotationsSubmit,
@@ -151,13 +152,27 @@ async def run_ai_prediction(
         # Save AI detections
         for detection in prediction_result["detections"]:
             bbox = detection["bounding_box"]
+            
+            # Ensure fracture_type is properly set
+            fracture_type_value = detection.get("fracture_type")
+            
+            # Convert string to enum if needed
+            if fracture_type_value and isinstance(fracture_type_value, str):
+                try:
+                    fracture_type_enum = FractureType(fracture_type_value.lower())
+                except ValueError:
+                    print(f"Warning: Invalid fracture_type '{fracture_type_value}', setting to None")
+                    fracture_type_enum = None
+            else:
+                fracture_type_enum = fracture_type_value
+            
             db_detection = FractureDetection(
                 prediction_id=prediction_id,
                 source=PredictionSource.AI,
                 class_id=detection["class_id"],
                 class_name=detection["class_name"],
                 confidence=detection["confidence"],
-                fracture_type=detection.get("fracture_type"),
+                fracture_type=fracture_type_enum,  # Properly set fracture_type
                 x_min=bbox["x_min"],
                 y_min=bbox["y_min"],
                 x_max=bbox["x_max"],
@@ -177,6 +192,11 @@ async def run_ai_prediction(
         db.commit()
         db.refresh(prediction)
         
+        # Log for debugging
+        print(f"AI Prediction completed: {prediction_result['detection_count']} detections")
+        for i, det in enumerate(prediction_result["detections"]):
+            print(f"  Detection {i+1}: class_id={det['class_id']}, fracture_type={det.get('fracture_type')}, confidence={det['confidence']:.2f}")
+        
         return {
             "message": "AI prediction completed successfully",
             "has_fracture": prediction_result["has_fracture"],
@@ -187,6 +207,9 @@ async def run_ai_prediction(
         
     except Exception as e:
         db.rollback()
+        print(f"AI prediction error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"AI prediction failed: {str(e)}"
