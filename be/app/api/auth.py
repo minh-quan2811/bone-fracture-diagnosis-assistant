@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse
 from app.core.database import get_db
 from app.models.user import User
-from app.core.security import hash_password, verify_password, create_access_token, decode_access_token
+from app.api.api_utils.security import hash_password, verify_password, create_access_token, decode_access_token
 from app.enums.roles import RoleEnum
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 

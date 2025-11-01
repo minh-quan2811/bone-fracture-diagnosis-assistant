@@ -50,36 +50,42 @@ export function ChatInput({
   };
 
   return (
-    <div className="bg-white border-t border-gray-200 p-4">
-      <form onSubmit={handleSubmit} className="flex space-x-2">
-        {showDocumentUpload && token && (
-          <DocumentUpload
-            token={token}
-            onUploadSuccess={handleUploadSuccess}
-            onUploadError={handleUploadError}
-            onUploadStart={handleUploadStart}
-          />
-        )}
-        
-        <input
-          type="text"
-          value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          placeholder={placeholder}
-          className="flex-1 px-4 py-3 border border-gray-300 rounded-lg 
-                    text-gray-900 placeholder-gray-400
-                    focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 
-                    outline-none transition-colors bg-white"
-          disabled={loading}
-        />
-        <Button
-          type="submit"
-          disabled={loading || !inputMessage.trim()}
-          className="px-6 py-3"
-        >
-          {loading ? "..." : "Send"}
-        </Button>
-      </form>
+    <div className="bg-white border-t border-gray-200">
+      <div className="p-2"> 
+        <div className="flex items-center space-x-2">
+          {showDocumentUpload && token && (
+            <div className="flex items-center">
+              <DocumentUpload
+                token={token}
+                onUploadSuccess={handleUploadSuccess}
+                onUploadError={handleUploadError}
+                onUploadStart={handleUploadStart}
+              />
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="flex flex-1 items-center space-x-2">
+            <input
+              type="text"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              placeholder={placeholder}
+              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg 
+                        text-gray-900 placeholder-gray-400
+                        focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 
+                        outline-none transition-colors bg-white"
+              disabled={loading}
+            />
+            <Button
+              type="submit"
+              disabled={loading || !inputMessage.trim()}
+              className="px-6 py-2.5"
+            >
+              {loading ? "..." : "Send"}
+            </Button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

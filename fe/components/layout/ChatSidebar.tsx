@@ -30,7 +30,8 @@ export function ChatSidebar({
   return (
     <div className="w-56 bg-white shadow-lg flex flex-col h-full overflow-hidden">
       {/* Header - Fixed at top with close button */}
-      <div className="flex-shrink-0 p-4 border-b border-gray-200">
+      <div className="flex-shrink-0 border-b border-gray-200">
+        <div className="p-4">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-lg font-bold text-gray-900">Bone Helper</h1>
           <SidebarToggleButton 
@@ -41,7 +42,7 @@ export function ChatSidebar({
         </div>
         
         {user && (
-          <div className="mb-4">
+          <div className="mb-3">
             <p className="text-sm text-gray-600">Welcome back!</p>
             <p className="font-medium text-gray-900 text-sm">{user.username}</p>
             <Badge 
@@ -57,6 +58,7 @@ export function ChatSidebar({
           + New Chat
         </Button>
       </div>
+      </div>
 
       {/* Conversations List - Scrollable */}
       <div className="flex-1 overflow-y-auto min-h-0">
@@ -68,7 +70,7 @@ export function ChatSidebar({
       </div>
 
       {/* Logout at bottom */}
-      <div className="p-4 border-t border-gray-200 flex justify-center">
+      <div className="p-3 border-t border-gray-200 flex justify-center">
         <button
           onClick={onLogout}
           className="px-3 py-1.5 bg-red-500 text-white text-sm font-medium rounded-md hover:bg-red-600 transition"

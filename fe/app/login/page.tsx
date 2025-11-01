@@ -25,7 +25,6 @@ export default function LoginPage() {
 
       const isAdmin = payload.is_admin === true || payload.is_admin === "True" || payload.is_admin === "true";
       
-      // Use router.push instead of window.location.href
       if (isAdmin) {
         router.push("/teacher");
       } else {
@@ -39,42 +38,82 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ maxWidth: 420, margin: "0 auto" }}>
-      <h2>Login</h2>
-      <form onSubmit={submit}>
-        <div style={{ marginBottom: 8 }}>
-          <input
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ width: "100%", padding: 8 }}
-            required
-          />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <input
-            placeholder="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ width: "100%", padding: 8 }}
-            required
-          />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Logo/Brand Section */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl mb-4 shadow-lg">
+            <div className="w-8 h-8 border-4 border-white rounded-lg"></div>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Bone Fracture Helper</h1>
+          <p className="text-gray-600">Sign in to continue to your account</p>
         </div>
 
-        <button type="submit" style={{ padding: "8px 12px" }} disabled={loading}>
-          {loading ? "Logging in..." : "Login"}
-        </button>
-      </form>
+        {/* Login Card */}
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+          <form onSubmit={submit} className="space-y-6">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                Email Address
+              </label>
+              <input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-900 placeholder-gray-400"
+                required
+              />
+            </div>
 
-      {err && <div style={{ color: "red", marginTop: 12 }}>{err}</div>}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none text-gray-900 placeholder-gray-400"
+                required
+              />
+            </div>
 
-      <div style={{ marginTop: 16 }}>
-        <strong>Seed users for quick test:</strong>
-        <ul>
-          <li>Teacher: teacher@example.com / secret123</li>
-          <li>Student: student@example.com / secret123</li>
-        </ul>
+            {err && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {err}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Signing in...
+                </span>
+              ) : (
+                "Sign In"
+              )}
+            </button>
+          </form>
+
+
+        </div>
+
+        {/* Footer */}
+        <p className="text-center text-sm text-gray-600 mt-4">
+          Secure medical assistant platform for bone fracture diagnosis
+        </p>
       </div>
     </div>
   );
