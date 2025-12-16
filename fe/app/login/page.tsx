@@ -45,7 +45,7 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl mb-4 shadow-lg">
             <div className="w-8 h-8 border-4 border-white rounded-lg"></div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Bone Fracture Helper</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Bone Vision Assistant</h1>
           <p className="text-gray-600">Sign in to continue to your account</p>
         </div>
 

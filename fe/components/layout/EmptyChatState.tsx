@@ -10,7 +10,7 @@ export function EmptyChatState({ onNewChat }: EmptyChatStateProps) {
       <div className="text-center w-full max-w-lg">
         <div className="text-8xl mb-6 text-blue-500">💬</div>
         <h2 className="text-3xl font-extrabold text-gray-900 mb-4">
-          Welcome to Bone Fracture Helper
+          Welcome to Bone Vision Assistant
         </h2>
         <p className="text-lg text-gray-700 mb-8 leading-relaxed">
           Select an existing conversation from the sidebar or click the button below to start a new chat.

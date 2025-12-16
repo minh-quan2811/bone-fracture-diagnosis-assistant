@@ -18,7 +18,7 @@ export default function Home() {
               <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
                 <div className="w-5 h-5 border-3 border-white rounded-md"></div>
               </div>
-              <span className="text-xl font-bold text-gray-900">Bone Fracture Helper</span>
+              <span className="text-xl font-bold text-gray-900">Bone Vision Assistant</span>
             </div>
             <button
               onClick={handleGoToLogin}
@@ -39,7 +39,7 @@ export default function Home() {
               <div className="w-10 h-10 border-4 border-white rounded-xl"></div>
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">
-              Bone Fracture Helper
+              Bone Vision Assistant
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
               Advanced AI-powered platform for bone fracture detection, diagnosis assistance, and medical education

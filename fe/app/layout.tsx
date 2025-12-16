@@ -2,7 +2,7 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Bone Fracture Helper (Frontend)",
+  title: "Bone Vision Assistant (Frontend)",
   description: "Login routing demo",
 };
 

@@ -109,24 +109,27 @@ class FracturePredictor:
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 fracture_predictor = FracturePredictor(
-    model_path=os.path.join(current_dir, "Our_YOLO.pt"),
+    model_path=os.path.join(current_dir, "fracture_model.pt"),
     confidence_threshold=0.25
 )
 
 # Testing predictions
 # if __name__ == "__main__":
-#     print("\nRunning self-test for BoneFracturePredictorModel...\n")
+#     print("\nRunning self-test for BoneFracturePredictor...\n")
 
-#     MODEL_PATH = r"C:\Users\Admin\Desktop\School_Projects\Bone_Fractures\be\app\services\bone_fracture_predict\fracture_model.pt"
+#     MODEL_PATH = r"C:\Users\Admin\Desktop\School_Projects\git repositories\Bone_Fractures\be\app\services\bone_fracture_predict\fracture_model.pt"
 #     TEST_IMAGE = r"C:\Users\Admin\Downloads\7.jpg"
 #     # Model classes: {0: 'comminuted', 1: 'compound', 2: 'greenstick', 3: 'splint', 4: 'transverse'}
 
 #     # Initialize model
-#     model = BoneFracturePredictorModel(model_path=MODEL_PATH)
+#     model = FracturePredictor(model_path=MODEL_PATH)
 
 #     if os.path.exists(TEST_IMAGE):
 #         print(f"Running detection on: {TEST_IMAGE}\n")
-#         result = model.predict_from_file(TEST_IMAGE)
+#         with open(TEST_IMAGE, 'rb') as f:
+#             file_content = f.read()
+#         result = model.predict(file_content)
+
 #         print("Detection Result:")
 #         print(result)
 #     else:
