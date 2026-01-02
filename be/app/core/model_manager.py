@@ -1,20 +1,30 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from llama_index.embeddings.cohere import CohereEmbedding
 from llama_index.postprocessor.cohere_rerank import CohereRerank
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+
 from app.core.config import settings
 
 class ModelManager:
     def __init__(self):
         pass
 
+    # def get_embedding_instance(self):
+    #     """
+    #     Get Cohere embedding model instance.
+    #     """
+    #     return CohereEmbedding(
+    #         api_key=settings.COHERE_API_KEY,
+    #         model_name="embed-english-v3.0",
+    #         max_tokens=60000
+    #     )
     def get_embedding_instance(self):
         """
-        Get Cohere embedding model instance.
+        Get HuggingFace embedding model instance.
         """
-        return CohereEmbedding(
-            api_key=settings.COHERE_API_KEY,
-            model_name="embed-english-v3.0",
-            max_tokens=60000
+        return HuggingFaceEmbedding(
+            model_name="BAAI/bge-small-en-v1.5",
+            max_length=512
         )
 
     def get_llm_langchain_instance(self):
