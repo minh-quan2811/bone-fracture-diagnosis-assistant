@@ -1,11 +1,6 @@
 import { useState, useCallback } from 'react';
-import { 
-  submitStudentAnnotations, 
-  runAiPrediction, 
-  getPredictionComparison 
-} from '@/lib/fracture-api';
+import { FractureService } from '@/services/fractureService';
 import { StudentAnnotation, Detection, PredictionResult, ComparisonResult } from '../types/fracture';
-
 
 interface UseFracturePredictionAPIReturn {
   currentPrediction: PredictionResult | null;
@@ -21,8 +16,6 @@ interface UseFracturePredictionAPIReturn {
   fetchComparison: (predictionId: number, token: string) => Promise<void>;
   clearPrediction: () => void;
 }
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export function useFracturePredictionAPI(): UseFracturePredictionAPIReturn {
   const [currentPrediction, setCurrentPrediction] = useState<PredictionResult | null>(null);
@@ -42,25 +35,13 @@ export function useFracturePredictionAPI(): UseFracturePredictionAPIReturn {
     setError(null);
 
     try {
-      const annotations = studentAnnotations.map(ann => ({
-        x_min: Math.floor(ann.x),
-        y_min: Math.floor(ann.y),
-        x_max: Math.floor(ann.x + ann.width),
-        y_max: Math.floor(ann.y + ann.height),
-        width: Math.floor(ann.width),
-        height: Math.floor(ann.height),
-        fracture_type: ann.fracture_type,
-        // body_region removed
-        notes: ann.notes || ''
-      }));
-
-      await submitStudentAnnotations(predictionId, annotations, token);
+      await FractureService.submitAnnotations(predictionId, studentAnnotations, token);
       
       // Update current prediction
       setCurrentPrediction(prev => prev ? {
         ...prev,
         has_student_predictions: true,
-        student_prediction_count: annotations.length
+        student_prediction_count: studentAnnotations.length
       } : null);
 
       // Convert annotations to detections for display (only if there are annotations)
@@ -101,7 +82,7 @@ export function useFracturePredictionAPI(): UseFracturePredictionAPIReturn {
     setError(null);
 
     try {
-      const result = await runAiPrediction(predictionId, token);
+      const result = await FractureService.runAI(predictionId, token);
       
       // Update prediction status
       setCurrentPrediction(prev => prev ? {
@@ -112,9 +93,7 @@ export function useFracturePredictionAPI(): UseFracturePredictionAPIReturn {
       } : null);
 
       // Get updated prediction data with detections
-      const updatedPrediction = await fetch(`${API_BASE_URL}/api/fracture/predictions/${predictionId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(res => res.json());
+      const updatedPrediction = await FractureService.getPredictionDetails(predictionId, token);
 
       // Convert AI detections for display
       const aiDetections: Detection[] = updatedPrediction.detections
@@ -149,7 +128,7 @@ export function useFracturePredictionAPI(): UseFracturePredictionAPIReturn {
 
   const fetchComparison = useCallback(async (predictionId: number, token: string) => {
     try {
-      const comparisonResult = await getPredictionComparison(predictionId, token);
+      const comparisonResult = await FractureService.getComparison(predictionId, token);
       setComparison(comparisonResult);
     } catch (err: any) {
       console.error('Comparison error:', err);

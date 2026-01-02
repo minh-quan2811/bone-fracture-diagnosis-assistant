@@ -1,18 +1,15 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { decodeToken } from "@/utils/jwt";
-import {
-  createConversation,
-  getConversations,
-  sendMessage,
-  getMessages,
-  getMe,
-  getDocumentHistory,
-  DocumentUpload as DocumentUploadType
-} from "@/lib/api";
+import { useEffect } from "react";
 
-import { Message, Conversation, ConversationBase, User } from "@/types";
+// Hooks
+import { useAuth } from "@/hooks/useAuth";
+import { useConversations } from "@/hooks/useConversations";
+import { useMessages } from "@/hooks/useMessages";
+import { useDocumentHistory } from "@/hooks/useDocumentHistory";
+import { useSidebar } from "@/hooks/useSidebar";
+import { usePreventBodyScroll } from "@/hooks/usePreventBodyScroll";
+
+// Components
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ChatSidebar } from "@/components/layout/ChatSidebar";
 import { EmptyChatState } from "@/components/layout/EmptyChatState";
@@ -26,199 +23,88 @@ import { ResizableLayout } from "@/components/ui/ResizableLayout";
 import { SidebarToggleButton } from "@/components/ui/SidebarToggleButton";
 
 export default function StudentPage() {
-  const router = useRouter();
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [token, setToken] = useState<string>("");
-  const [sidebarVisible, setSidebarVisible] = useState(true);
-  const [documentHistory, setDocumentHistory] = useState<DocumentUploadType[]>([]);
-  const [shouldRefreshDocs, setShouldRefreshDocs] = useState(0);
-  const [uploadingDocs, setUploadingDocs] = useState<Map<string, DocumentUploadType>>(new Map());
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  // Auth
+  const { authorized, user, token, logout } = useAuth();
 
-  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
-  };
+  // Conversations
+  const {
+    conversations,
+    activeConversation,
+    loadConversations,
+    createNewConversation,
+    selectConversation,
+  } = useConversations();
 
-  // Scroll to bottom when messages change or loading state changes
+  // Messages
+  const {
+    messages,
+    loading,
+    loadMessages,
+    sendMessage,
+    messagesEndRef,
+    messagesContainerRef,
+  } = useMessages();
+
+  // Document History
+  const {
+    combinedHistory,
+    loadDocumentHistory,
+    handleDocumentUploadStart,
+    handleDocumentUploadComplete,
+    triggerRefresh,
+  } = useDocumentHistory();
+
+  // Sidebar
+  const { sidebarVisible, toggleSidebar } = useSidebar();
+
+  // Prevent body scroll
+  usePreventBodyScroll();
+
+  // Load conversations on mount
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, loading]);
-
-  useEffect(() => {
-    // Prevent body scroll
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
-    
-    // Cleanup function to restore scroll when component unmounts
-    return () => {
-      document.body.style.overflow = 'unset';
-      document.documentElement.style.overflow = 'unset';
-    };
-  }, []);
-
-  useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    if (!storedToken) {
-      router.push("/login");
-      return;
+    if (token) {
+      loadConversations(token);
     }
+  }, [token, loadConversations]);
 
-    const payload = decodeToken(storedToken);
-    if (!payload) {
-      router.push("/login");
-      return;
-    }
-
-    const isAdmin = payload.is_admin === true || payload.is_admin === "True" || payload.is_admin === "true";
-    if (isAdmin) {
-      router.push("/teacher");
-      return;
-    }
-
-    setToken(storedToken);
-    setAuthorized(true);
-    loadUserData(storedToken);
-    loadConversations(storedToken);
-    loadDocumentHistory(storedToken);
-  }, [router]);
-
-  // Refresh document history when shouldRefreshDocs changes
+  // Load document history on mount and when refreshed
   useEffect(() => {
-    if (token && shouldRefreshDocs > 0) {
+    if (token) {
       loadDocumentHistory(token);
     }
-  }, [shouldRefreshDocs, token]);
-
-  const loadUserData = async (authToken: string) => {
-    try {
-      const userData = await getMe(authToken);
-      setUser(userData);
-    } catch (error) {
-      console.error("Failed to load user data:", error);
-      localStorage.removeItem("token");
-      router.push("/login");
-    }
-  };
-
-  const loadConversations = async (authToken: string) => {
-    try {
-      const convs = await getConversations(authToken);
-      setConversations(convs);
-    } catch (error) {
-      console.error("Failed to load conversations:", error);
-    }
-  };
-
-  const loadDocumentHistory = async (authToken: string) => {
-    try {
-      const docs = await getDocumentHistory(authToken);
-      setDocumentHistory(docs);
-    } catch (error) {
-      console.error("Failed to load document history:", error);
-    }
-  };
-
-  const loadMessages = async (conversationId: number) => {
-    try {
-      const msgs = await getMessages(conversationId, token);
-      setMessages(msgs);
-      // Scroll to bottom immediately after loading messages
-      setTimeout(() => scrollToBottom('auto'), 100);
-    } catch (error) {
-      console.error("Failed to load messages:", error);
-      setMessages([]);
-    }
-  };
+  }, [token, loadDocumentHistory]);
 
   const handleNewConversation = async () => {
-    try {
-      const newConv = await createConversation("New Chat", token);
-      setConversations([newConv, ...conversations]);
-      setActiveConversation(newConv);
-      setMessages([]);
-    } catch (error) {
-      console.error("Failed to create conversation:", error);
-    }
+    await createNewConversation(token);
   };
 
-  const handleSelectConversation = async (conversation: ConversationBase) => {
-    setActiveConversation({ ...conversation, messages: [] });
-    await loadMessages(conversation.id);
+  const handleSelectConversation = async (conversation: any) => {
+    selectConversation(conversation);
+    await loadMessages(conversation.id, token);
   };
 
   const handleSendMessage = async (messageContent: string) => {
     if (!activeConversation) return;
 
-    // Immediately add the user message to the UI
-    const userMessage: Message = {
-      id: Date.now(), // Temporary ID
-      content: messageContent,
-      role: 'user',
-      created_at: new Date().toISOString()
-    };
-    
-    setMessages(prevMessages => [...prevMessages, userMessage]);
-    setLoading(true);
-
     try {
-      const newMessages = await sendMessage(activeConversation.id, messageContent, token);
-      // Replace the temporary user message with the actual response messages
-      setMessages(prevMessages => {
-        const withoutTempMessage = prevMessages.slice(0, -1); // Remove temporary user message
-        return [...withoutTempMessage, ...newMessages];
-      });
-      await loadConversations(token);
+      await sendMessage(
+        activeConversation.id,
+        messageContent,
+        token,
+        () => loadConversations(token)
+      );
     } catch (error) {
-      // Remove the temporary user message on error
-      setMessages(prevMessages => prevMessages.slice(0, -1));
       console.error("Failed to send message:", error);
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    router.push("/login");
+  const handleDocumentRefresh = () => {
+    if (token) {
+      triggerRefresh();
+      loadDocumentHistory(token);
+    }
   };
-
-  const handleToggleSidebar = () => {
-    setSidebarVisible(!sidebarVisible);
-  };
-
-  const handleDocumentUploadStart = (filename: string) => {
-    // Add a temporary "uploading" document to the history
-    const tempDoc: DocumentUploadType = {
-      id: Date.now(), // Temporary ID
-      user_id: user?.id || 0,
-      filename: filename,
-      file_type: null,
-      status: 'uploading',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    setUploadingDocs(prev => new Map(prev).set(filename, tempDoc));
-  };
-
-  const handleDocumentUploadComplete = () => {
-    // Clear uploading docs and trigger refresh
-    setUploadingDocs(new Map());
-    setShouldRefreshDocs(prev => prev + 1);
-  };
-
-  // Combine real document history with uploading documents
-  const combinedDocumentHistory = [
-    ...Array.from(uploadingDocs.values()),
-    ...documentHistory
-  ];
 
   if (authorized === null) {
     return (
@@ -238,13 +124,13 @@ export default function StudentPage() {
           activeConversationId={activeConversation?.id || null}
           onNewChat={handleNewConversation}
           onSelectConversation={handleSelectConversation}
-          onLogout={handleLogout}
-          onToggleSidebar={handleToggleSidebar}
+          onLogout={logout}
+          onToggleSidebar={toggleSidebar}
         />
       </div>
 
       {/* Main content area - adjust width based on sidebar visibility */}
-      <div className={`flex-1 flex flex-col min-h-0 overflow-hidden ${sidebarVisible ? '' : 'w-full'}`}>
+      <div className={`flex-1 flex flex-col min-h-0 overflow-hidden ${sidebarVisible ? "" : "w-full"}`}>
         <ResizableLayout className="flex-1">
           <ResizableLayout.Panel defaultSize={60} minSize={40} className="flex flex-col overflow-hidden">
             {activeConversation ? (
@@ -254,14 +140,15 @@ export default function StudentPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       {!sidebarVisible && (
-                        <SidebarToggleButton 
-                          isVisible={sidebarVisible}
-                          onToggle={handleToggleSidebar}
-                        />
+                        <SidebarToggleButton isVisible={sidebarVisible} onToggle={toggleSidebar} />
                       )}
                       <div>
-                        <h2 className="font-semibold text-gray-900">{activeConversation.title || "New Chat"}</h2>
-                        <p className="text-sm text-gray-500">Ask me about bone fractures and injuries</p>
+                        <h2 className="font-semibold text-gray-900">
+                          {activeConversation.title || "New Chat"}
+                        </h2>
+                        <p className="text-sm text-gray-500">
+                          Ask me about bone fractures and injuries
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -288,7 +175,9 @@ export default function StudentPage() {
                     placeholder="Ask about bone fractures, treatments, or symptoms..."
                     token={token}
                     showDocumentUpload={true}
-                    onDocumentUploadStart={handleDocumentUploadStart}
+                    onDocumentUploadStart={(filename) =>
+                      handleDocumentUploadStart(filename, user?.id || 0)
+                    }
                     onDocumentUploadComplete={handleDocumentUploadComplete}
                   />
                 </div>
@@ -298,10 +187,7 @@ export default function StudentPage() {
                 {/* Empty state with sidebar toggle only when sidebar is hidden */}
                 <div className="flex-shrink-0 bg-white border-b border-gray-200 p-4">
                   {!sidebarVisible && (
-                    <SidebarToggleButton 
-                      isVisible={sidebarVisible}
-                      onToggle={handleToggleSidebar}
-                    />
+                    <SidebarToggleButton isVisible={sidebarVisible} onToggle={toggleSidebar} />
                   )}
                 </div>
                 <EmptyChatState onNewChat={handleNewConversation} />
@@ -312,11 +198,11 @@ export default function StudentPage() {
           <ResizableLayout.Splitter />
 
           <ResizableLayout.Panel defaultSize={40} minSize={25} className="flex flex-col overflow-hidden">
-            <FractureDetectionPanel 
-              token={token} 
+            <FractureDetectionPanel
+              token={token}
               user={user}
-              documentHistory={combinedDocumentHistory}
-              onRefreshDocuments={() => setShouldRefreshDocs(prev => prev + 1)}
+              documentHistory={combinedHistory}
+              onRefreshDocuments={handleDocumentRefresh}
             />
           </ResizableLayout.Panel>
         </ResizableLayout>

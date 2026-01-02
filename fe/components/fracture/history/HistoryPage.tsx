@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useHistoryData } from '../../../hooks/history/useHistoryData';
 import { useOverallStats } from '../../../hooks/history/useOverallStats';
+import { FractureService } from '@/services/fractureService';
 import { OverallStatsCard } from './OverallStatsCard';
 import { ComparisonResultsCard } from '../ComparisonResultsCard';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface HistoryPageProps {
   token: string;
@@ -209,13 +208,12 @@ export function HistoryPage({ token, onBack }: HistoryPageProps) {
               <div className="relative">
                 <img 
                   ref={imgRef}
-                  src={`${API_BASE}/${currentPrediction.image_path.replace(/\\/g, '/')}`}
+                  src={FractureService.getImageUrl(currentPrediction.image_path)}
                   alt={currentPrediction.image_filename}
                   className="max-w-full max-h-[600px] object-contain"
                   onLoad={drawAnnotations}
                   onError={(e) => {
                     console.error('Failed to load image:', currentPrediction.image_path);
-                    console.error('Attempted URL:', `${API_BASE}/${currentPrediction.image_path.replace(/\\/g, '/')}`);
                     e.currentTarget.style.display = 'none';
                   }}
                 />

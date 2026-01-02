@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { FracturePrediction, PredictionComparison } from '@/types/fracture';
-import { getAllPredictions, getPredictionComparison } from '@/lib/fracture-api';
+import { FracturePrediction, PredictionComparison } from '@/types';
+import { FractureService } from '@/services/fractureService';
 
 export function useHistoryData(token: string) {
   const [predictions, setPredictions] = useState<FracturePrediction[]>([]);
@@ -16,7 +16,7 @@ export function useHistoryData(token: string) {
         setIsLoading(true);
         setError(null);
         
-        const allPredictions = await getAllPredictions(token);
+        const allPredictions = await FractureService.getAllPredictions(token);
         
         const completedPredictions = allPredictions.filter(
           (p: FracturePrediction) => p.has_student_predictions && p.has_ai_predictions
@@ -28,7 +28,7 @@ export function useHistoryData(token: string) {
         
         for (const prediction of completedPredictions) {
           try {
-            const comparison = await getPredictionComparison(
+            const comparison = await FractureService.getComparison(
               prediction.id, 
               token
             );

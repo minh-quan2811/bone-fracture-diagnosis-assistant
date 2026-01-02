@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { DocumentUploadButton } from './DocumentUploadButton';
-import { uploadDocument } from '@/lib/upload';
+import { UploadService } from '@/services/uploadService';
 
 interface DocumentUpload {
   id: number;
@@ -64,7 +64,7 @@ export function DocumentUpload({
     onUploadStart?.(file.name);
 
     try {
-      const response = await uploadDocument(file, token, collectionName, indexId);
+      const response = await UploadService.uploadDocument(file, token, collectionName, indexId);
       onUploadSuccess?.(response);
     } catch (error: any) {
       const errorMessage = error.message || 'Failed to upload document';

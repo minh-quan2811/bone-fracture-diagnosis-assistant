@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { FractureService } from '@/services/fractureService';
 import { StudentAnnotation, PredictionResult } from '../types/fracture';
 
 interface UsePredictionRevisionReturn {
@@ -11,8 +12,6 @@ interface UsePredictionRevisionReturn {
   ) => Promise<void>;
   clearReviseError: () => void;
 }
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export function usePredictionRevision(): UsePredictionRevisionReturn {
   const [isRevising, setIsRevising] = useState(false);
@@ -27,19 +26,8 @@ export function usePredictionRevision(): UsePredictionRevisionReturn {
     setReviseError(null);
 
     try {
-      // Fetch current prediction details
-      const response = await fetch(
-        `${API_BASE_URL}/api/fracture/predictions/${predictionId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch prediction details');
-      }
-
-      const predictionData = await response.json();
+      // Fetch current prediction details using service
+      const predictionData = await FractureService.getPredictionDetails(predictionId, token);
 
       // Extract student detections
       const studentDetections = predictionData.detections.filter(

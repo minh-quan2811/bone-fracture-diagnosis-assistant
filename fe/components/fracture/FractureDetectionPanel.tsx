@@ -12,7 +12,7 @@ import { ErrorDisplay } from './ErrorDisplay';
 import { AnnotationAttributeSelector } from './AnnotationAttributeSelector';
 import { PredictionStatusCard } from './PredictionStatusCard';
 import { StudentActionButtons } from './StudentActionButtons';
-import { Detection } from '@/types/fracture';
+import { Detection } from '@/types';
 
 // Import History Components
 import { HistorySection } from './history/HistorySection';

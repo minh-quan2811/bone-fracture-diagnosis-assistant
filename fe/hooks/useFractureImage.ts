@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
-import { uploadFractureImage } from '@/lib/upload';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { UploadService } from '@/services/uploadService';
+import { FractureService } from '@/services/fractureService';
 
 interface UseFractureImageReturn {
   image: HTMLImageElement | null;
@@ -34,7 +33,7 @@ export function useFractureImage(): UseFractureImageReturn {
     setError(null);
 
     try {
-      const prediction = await uploadFractureImage(file, token);
+      const prediction = await UploadService.uploadFractureImage(file, token);
       setImageFile(file);
 
       // Load the RESIZED 640x640 image from server (not the original file)
@@ -53,9 +52,8 @@ export function useFractureImage(): UseFractureImageReturn {
           reject(new Error('Failed to load image from server'));
         };
         
-        // Load the resized image from the server
-        const imagePath = prediction.image_path.replace(/\\/g, '/');
-        img.src = `${API_BASE}/${imagePath}?t=${Date.now()}`;
+        // Load the resized image from the server using service
+        img.src = FractureService.getImageUrl(prediction.image_path);
       });
     } catch (err: any) {
       setError(err.message);

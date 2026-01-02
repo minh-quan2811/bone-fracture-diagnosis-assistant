@@ -1,23 +1,4 @@
-interface Detection {
-  id: number | string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  label: string;
-  confidence?: number;
-  color: string;
-  source: 'student' | 'ai';
-}
-
-interface StudentAnnotation {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  notes?: string;
-}
+import { Detection, StudentAnnotation } from '@/types';
 
 /**
  * Get canvas coordinates from mouse event, scaled to image coordinates

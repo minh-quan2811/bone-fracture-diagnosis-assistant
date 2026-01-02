@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { PredictionComparison } from '@/types/fracture';
+import { PredictionComparison } from '@/types';
 
 export interface OverallStats {
   total_images: number;
