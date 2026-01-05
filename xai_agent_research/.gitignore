@@ -3,6 +3,7 @@
 .venv
 env/
 venv/
+*_venv/
 
 # Compliled files
 __pycache__/
