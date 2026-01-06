@@ -3,6 +3,7 @@
 .venv
 env/
 venv/
+*_venv/
 
 # Compliled files
 __pycache__/
@@ -10,6 +11,7 @@ __pycache__/
 
 # Model weights
 *.pt
+*.pth
 *.onnx
 
 # Ignore all common image files
@@ -25,7 +27,6 @@ __pycache__/
 *.pdf
 *.docx
 *.doc
-*.txt
 *.rtf
 *.odt
 *.xls
