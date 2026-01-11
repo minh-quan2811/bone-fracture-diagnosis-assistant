@@ -11,5 +11,3 @@ class DeepLearningModelManager:
         return model
 
 dl_model_manager = DeepLearningModelManager()
-
-print(ModelPath.RFDETR_MODEL_PATH)

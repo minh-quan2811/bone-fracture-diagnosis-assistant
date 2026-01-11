@@ -8,7 +8,7 @@ from PIL import ImageDraw
 
 from config.llm_models import llm_manager
 from config.deep_learning_models import dl_model_manager
-from config.constant_path import FractureConfig, PromptPath
+from config.constant_path import FractureConfig, PredictionPromptPath
 from agents.prediction_agent.schemas import ReasoningState, StudentLabel
 
 import torch
@@ -28,7 +28,7 @@ def image_to_base64(image):
     return base64.b64encode(buffered.getvalue()).decode()
 
 
-REASONING_EVALUATION_PROMPT = read_file_content(str(PromptPath.REASONING_EVALUATION_PROMPT_PATH))
+REASONING_EVALUATION_PROMPT = read_file_content(str(PredictionPromptPath.PROMPT_DIR / "reasoning_evaluation.md"))
 
 
 class PredictionAgent:

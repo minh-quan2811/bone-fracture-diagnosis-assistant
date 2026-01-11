@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from pydantic_settings import BaseSettings
 
 class BasePath:
     BASE_DIR = Path(__file__).resolve().parent.parent   # XAI_AGENT_RESEARCH root directory
@@ -19,14 +20,15 @@ class ModelPath:
     
     RFDETR_MODEL_PATH = MODELS_DIR / "checkpoint_small_1.pth"
 
-class PromptPath:
+class PredictionPromptPath:
     BASE_DIR = BasePath.BASE_DIR
-    PROMPTS_DIR = BASE_DIR / "agents" / "prediction_agent" / "prompts"
-    
-    REASONING_EVALUATION_PROMPT_PATH = PROMPTS_DIR / "reasoning_evaluation.md"
+    PROMPT_DIR = BASE_DIR / "agents" / "prediction_agent" / "prompts"
 
-class APIConfig:
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+class APIConfig(BaseSettings):
+    OPENAI_API_KEY: str
+    GEMINI_API_KEY: str
+
+api_config = APIConfig(_env_file=str(BasePath.BASE_DIR / '.env'), _env_file_encoding='utf-8')
 
 class FractureConfig:
     CLASS_TO_FRACTURE_TYPE = {
