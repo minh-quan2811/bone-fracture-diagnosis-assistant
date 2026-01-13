@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import supervision as sv
 from rfdetr import RFDETRSmall
 
-from xai_agent_research.config.constant_path import FractureConfig, ModelPath, DataPath
+from src.config.constant_path import FractureConfig, ModelPath, DataPath
 
 # suppress tracer warnings
 warnings.filterwarnings("ignore", category=torch.jit.TracerWarning)

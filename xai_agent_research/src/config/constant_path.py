@@ -3,7 +3,8 @@ from pathlib import Path
 from pydantic_settings import BaseSettings
 
 class BasePath:
-    BASE_DIR = Path(__file__).resolve().parent.parent   # XAI_AGENT_RESEARCH root directory
+    BASE_DIR = Path(__file__).resolve().parent.parent   # src root directory
+    PROJECT_ROOT = BASE_DIR.parent                      #xai_agent root directory
     CONFIG_DIR = BASE_DIR / "config"
 
 class DataPath:
@@ -28,7 +29,7 @@ class APIConfig(BaseSettings):
     OPENAI_API_KEY: str
     GEMINI_API_KEY: str
 
-api_config = APIConfig(_env_file=str(BasePath.BASE_DIR / '.env'), _env_file_encoding='utf-8')
+api_config = APIConfig(_env_file=str(BasePath.PROJECT_ROOT / '.env'), _env_file_encoding='utf-8')
 
 class FractureConfig:
     CLASS_TO_FRACTURE_TYPE = {

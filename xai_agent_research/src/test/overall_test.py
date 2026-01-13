@@ -3,13 +3,15 @@ import sys
 from pathlib import Path
 from PIL import Image
 
-# Add parent directories to path
-sys.path.append(str(Path(__file__).resolve().parent.parent.parent.parent))
+from langchain_core.messages import HumanMessage
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from agents.prediction_agent.prediction_agent import prediction_agent
-from agents.prediction_agent.schemas import StudentLabel, BoundingBox
+from agents.prediction_agent.schemas import StudentLabel, BoundingBox, ReasoningState
 from config.constant_path import DataPath
-from agents.prediction_agent.test.utils import draw_bounding_boxes, create_evaluation_report
+
+from utils import draw_bounding_boxes, create_evaluation_report
 
 async def run_test_case(
     test_name,
@@ -36,10 +38,7 @@ async def run_test_case(
     # Get evaluation
     evaluation = await prediction_agent.evaluate_student_work(student_label)
     
-    # Get model prediction from workflow state
-    from agents.prediction_agent.schemas import ReasoningState
-    from langchain_core.messages import HumanMessage
-    
+    # Get model prediction from workflow state    
     initial_state = ReasoningState(
         image=image,
         student_class=student_class,
