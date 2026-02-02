@@ -3,72 +3,90 @@ from sqlalchemy.orm import Session
 from app.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse
 from app.core.database import get_db
 from app.models.user import User
-from app.api.api_utils.security import hash_password, verify_password, create_access_token, decode_access_token
-from app.enums.roles import RoleEnum
+from app.services.user_service import user_service
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 router = APIRouter()
 security = HTTPBearer()
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """Get current user from JWT token"""
     token = credentials.credentials
-    payload = decode_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
-    email = payload.get("sub")
-    if not email:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+    result, status_code = user_service.get_user_by_token(token, db)
+    
+    if status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=result.get("error")
+        )
+    
+    # Return the actual user object from database
+    email = result.get("email")
     user = db.query(User).filter(User.email == email).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
     return user
+
 
 @router.post("/register", response_model=UserResponse)
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    # check email or username
-    exists = db.query(User).filter((User.email == user.email) | (User.username == user.username)).first()
-    if exists:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User with email or username already exists")
-
-    # Determine role based on is_admin flag
-    role = RoleEnum.TEACHER if user.is_admin else RoleEnum.STUDENT
-
-    db_user = User(
-        username=user.username,
-        email=user.email,
-        hashed_password=hash_password(user.password),
-        is_admin=user.is_admin,
-        role=role,
+    """Register a new user"""
+    result, status_code = user_service.register_user(
+        user.username, user.email, user.password, user.is_admin, db
     )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+    
+    if status_code != 201:
+        raise HTTPException(status_code=status_code, detail=result.get("error"))
+    
+    return UserResponse(
+        id=result["id"],
+        username=result["username"],
+        email=result["email"],
+        is_admin=result["is_admin"],
+        role=result["role"]
+    )
+
 
 @router.post("/login", response_model=TokenResponse)
 def login(payload: UserLogin, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == payload.email).first()
-    if not db_user or not verify_password(payload.password, db_user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    """Login user and return access token"""
+    result, status_code = user_service.login_user(payload.email, payload.password, db)
     
-    token = create_access_token({
-        "sub": db_user.email, 
-        "is_admin": db_user.is_admin, 
-        "username": db_user.username,
-        "role": db_user.role.value
-    })
-    return {"access_token": token, "token_type": "bearer"}
+    if status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=result.get("error")
+        )
+    
+    return TokenResponse(
+        access_token=result["access_token"],
+        token_type=result["token_type"]
+    )
+
 
 @router.get("/me", response_model=UserResponse)
-def get_me(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+def get_me(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """Get current user information"""
     token = credentials.credentials
-    payload = decode_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
-    email = payload.get("sub")
-    if not email:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
-    user = db.query(User).filter(User.email == email).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return user
+    result, status_code = user_service.get_user_by_token(token, db)
+    
+    if status_code != 200:
+        raise HTTPException(status_code=status_code, detail=result.get("error"))
+    
+    return UserResponse(
+        id=result["id"],
+        username=result["username"],
+        email=result["email"],
+        is_admin=result["is_admin"],
+        role=result["role"]
+    )

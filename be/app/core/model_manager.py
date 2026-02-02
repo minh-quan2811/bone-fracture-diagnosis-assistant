@@ -1,5 +1,5 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
-from llama_index.embeddings.cohere import CohereEmbedding
+# from llama_index.embeddings.cohere import CohereEmbedding
 from llama_index.postprocessor.cohere_rerank import CohereRerank
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
