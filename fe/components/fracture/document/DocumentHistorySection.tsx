@@ -9,8 +9,7 @@ interface DocumentHistorySectionProps {
 
 export function DocumentHistorySection({ 
   onNavigateToHistory,
-  recentDocuments = [],
-  isLoading = false
+  recentDocuments = []
 }: DocumentHistorySectionProps) {
   const processingDocs = recentDocuments.filter(
     doc => doc.status === 'uploading' || doc.status === 'processing'

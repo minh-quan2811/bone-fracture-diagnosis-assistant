@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
-import { User, DocumentUpload } from '@/types';
+import { DocumentUpload } from '@/types';
+import { Detection, StudentAnnotation } from '@/types/fracture';
 import { useFractureImage } from '@/hooks/useFractureImage';
 import { useAnnotationDrawing } from '@/hooks/useAnnotationDrawing';
 import { useFracturePredictionAPI } from '@/hooks/useFracturePredictionAPI';
@@ -12,7 +13,6 @@ import { ErrorDisplay } from './ErrorDisplay';
 import { AnnotationAttributeSelector } from './AnnotationAttributeSelector';
 import { PredictionStatusCard } from './PredictionStatusCard';
 import { StudentActionButtons } from './StudentActionButtons';
-import { Detection } from '@/types';
 
 // Import History Components
 import { HistorySection } from './history/HistorySection';
@@ -22,14 +22,12 @@ import { DocumentHistoryPage } from './document/DocumentHistoryPage';
 
 interface FractureDetectionPanelProps {
   token: string;
-  user: User | null;
   documentHistory?: DocumentUpload[];
   onRefreshDocuments?: () => void;
 }
 
 export function FractureDetectionPanel({ 
   token, 
-  user,
   documentHistory = [],
   onRefreshDocuments
 }: FractureDetectionPanelProps) {
@@ -150,7 +148,7 @@ export function FractureDetectionPanel({
       setCurrentPrediction(prediction);
       clearAnnotations();
       setAllDetections([]);
-    } catch (err: any) {
+    } catch (err: Error | unknown) {
       console.error('Upload error:', err);
     }
   };
@@ -187,9 +185,9 @@ export function FractureDetectionPanel({
     onMouseUp();
   };
 
-  const handleSaveAnnotationDetails = (annotation: any) => {
+  const handleSaveAnnotationDetails = (annotation: StudentAnnotation) => {
     updateAnnotation(annotation.id, {
-      fracture_type: annotation.fracture_type,
+      fracture_type: annotation.fracture_type || '',
       notes: annotation.notes
     });
   };
@@ -344,7 +342,6 @@ export function FractureDetectionPanel({
                     onMouseDown={handleCanvasMouseDown}
                     onMouseMove={handleCanvasMouseMove}
                     onMouseUp={handleCanvasMouseUp}
-                    containerRef={containerRef}
                   />
                 </div>
 
@@ -435,7 +432,7 @@ export function FractureDetectionPanel({
                       Select fracture type for each annotation on the right.
                     </p>
                     <p className="text-blue-700 text-xs mt-1">
-                      If you don't see any fractures, stop annotating and click "Submit: No Fractures"
+                      If you don&apos;t see any fractures, stop annotating and click &quot;Submit: No Fractures&quot;
                     </p>
                   </div>
                 )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useHistoryData } from '../../../hooks/history/useHistoryData';
 import { useOverallStats } from '../../../hooks/history/useOverallStats';
 import { FractureService } from '@/services/fractureService';
@@ -19,7 +19,7 @@ export function HistoryPage({ token, onBack }: HistoryPageProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handlePrevious = () => {
+  const handlePrevious = useCallback(() => {
     if (currentIndex > 0) {
       setFadeIn(false);
       setTimeout(() => {
@@ -27,9 +27,9 @@ export function HistoryPage({ token, onBack }: HistoryPageProps) {
         setFadeIn(true);
       }, 150);
     }
-  };
+  }, [currentIndex]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (currentIndex < predictions.length - 1) {
       setFadeIn(false);
       setTimeout(() => {
@@ -37,7 +37,7 @@ export function HistoryPage({ token, onBack }: HistoryPageProps) {
         setFadeIn(true);
       }, 150);
     }
-  };
+  }, [currentIndex, predictions.length]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -48,7 +48,7 @@ export function HistoryPage({ token, onBack }: HistoryPageProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, predictions.length]);
+  }, [currentIndex, predictions.length, handlePrevious, handleNext, onBack]);
 
   // Draw annotations on canvas when image loads
   const drawAnnotations = () => {
@@ -206,10 +206,11 @@ export function HistoryPage({ token, onBack }: HistoryPageProps) {
               className="bg-gray-100 rounded-lg flex items-center justify-center p-8 min-h-[500px] relative"
             >
               <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img 
                   ref={imgRef}
                   src={FractureService.getImageUrl(currentPrediction.image_path)}
-                  alt={currentPrediction.image_filename}
+                  alt={currentPrediction.image_filename || 'Fracture image'}
                   className="max-w-full max-h-[600px] object-contain"
                   onLoad={drawAnnotations}
                   onError={(e) => {
