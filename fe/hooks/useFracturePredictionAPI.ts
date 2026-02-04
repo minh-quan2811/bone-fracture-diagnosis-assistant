@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { FractureService } from '@/services/fractureService';
-import { StudentAnnotation, Detection, PredictionResult, ComparisonResult } from '../types/fracture';
+import { StudentAnnotation, Detection, PredictionResult } from '../types/fracture';
+import { ComparisonResult } from '../types/comparison';
 
 interface UseFracturePredictionAPIReturn {
   currentPrediction: PredictionResult | null;

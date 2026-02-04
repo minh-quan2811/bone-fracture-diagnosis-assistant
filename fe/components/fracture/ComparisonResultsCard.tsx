@@ -1,12 +1,11 @@
 import React from 'react';
-import { PredictionComparison } from '../../types/fracture';
+import { PredictionComparison } from '../../types/comparison';
 
 interface ComparisonResultsCardProps {
   comparison: PredictionComparison | null;
 }
 
 // Valid fracture types from model: {0: 'comminuted', 1: 'greenstick', 2: 'oblique', 3: 'spiral', 4: 'transverse'}
-const VALID_FRACTURE_TYPES = ['comminuted', 'greenstick', 'oblique', 'spiral', 'transverse'];
 
 const capitalizeFractureType = (type: string | undefined | null): string => {
   if (!type) return 'Unknown';
@@ -16,31 +15,25 @@ const capitalizeFractureType = (type: string | undefined | null): string => {
 export function ComparisonResultsCard({ comparison }: ComparisonResultsCardProps) {
   if (!comparison) return null;
 
-  const { comparison_metrics, student_detections, ai_detections, detailed_comparison, feedback } = comparison;
+  const { comparison_metrics, detailed_comparison, feedback } = comparison;
 
   // Determine result type
-  let resultType: 'agreement' | 'disagreement' | 'student_only' | 'ai_only' | 'both_normal';
   let resultText: string;
   let resultColor: string;
 
   if (comparison_metrics.both_normal) {
-    resultType = 'both_normal';
     resultText = 'Both Agree: No Fracture';
     resultColor = 'bg-green-50 border-green-300 text-green-900';
   } else if (comparison_metrics.both_found_fractures) {
-    resultType = 'agreement';
     resultText = 'Both Found Fractures';
     resultColor = 'bg-orange-50 border-orange-300 text-orange-900';
   } else if (comparison_metrics.student_only) {
-    resultType = 'student_only';
     resultText = 'Only You Found Fracture';
     resultColor = 'bg-blue-50 border-blue-300 text-blue-900';
   } else if (comparison_metrics.ai_only) {
-    resultType = 'ai_only';
     resultText = 'Only AI Found Fracture';
     resultColor = 'bg-red-50 border-red-300 text-red-900';
   } else {
-    resultType = 'disagreement';
     resultText = 'Results Differ';
     resultColor = 'bg-yellow-50 border-yellow-300 text-yellow-900';
   }

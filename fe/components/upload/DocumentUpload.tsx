@@ -53,10 +53,10 @@ export function DocumentUpload({
   };
 
   const handleFileSelect = async (file: File) => {
-    const error = validateFile(file);
+    const validationError = validateFile(file);
     
-    if (error) {
-      onUploadError?.(error);
+    if (validationError) {
+      onUploadError?.(validationError);
       return;
     }
 
@@ -66,8 +66,8 @@ export function DocumentUpload({
     try {
       const response = await UploadService.uploadDocument(file, token, collectionName, indexId);
       onUploadSuccess?.(response);
-    } catch (error: any) {
-      const errorMessage = error.message || 'Failed to upload document';
+    } catch (error: Error | unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload document';
       onUploadError?.(errorMessage);
     } finally {
       setIsUploading(false);

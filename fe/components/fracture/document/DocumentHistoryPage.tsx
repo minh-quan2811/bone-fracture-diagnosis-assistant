@@ -10,7 +10,6 @@ interface DocumentHistoryPageProps {
 }
 
 export function DocumentHistoryPage({ 
-  token, 
   onBack, 
   documents = [],
   onRefresh 
