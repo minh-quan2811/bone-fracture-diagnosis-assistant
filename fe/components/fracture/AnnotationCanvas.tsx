@@ -13,7 +13,6 @@ interface AnnotationCanvasProps {
   onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseUp: () => void;
-  containerRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export interface AnnotationCanvasRef {
@@ -31,8 +30,7 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
   isDrawing,
   onMouseDown,
   onMouseMove,
-  onMouseUp,
-  containerRef
+  onMouseUp
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -160,8 +158,7 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
     currentRect, 
     isDrawing, 
     showStudentAnnotations, 
-    showAiPredictions,
-    containerRef
+    showAiPredictions
   ]);
 
   useEffect(() => {

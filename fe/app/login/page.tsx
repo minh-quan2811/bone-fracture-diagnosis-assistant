@@ -16,22 +16,32 @@ export default function LoginPage() {
     setErr(null);
     setLoading(true);
     try {
+      console.log("Starting login process...");
       const data = await login(email, password);
+      console.log("Login successful, received data:", data);
+      
       const token = data.access_token;
+      if (!token) {
+        throw new Error("No access token received from server");
+      }
+      
       localStorage.setItem("token", token);
 
       const payload = decodeToken(token);
       if (!payload) throw new Error("Invalid token payload");
 
       const isAdmin = payload.is_admin === true || payload.is_admin === "True" || payload.is_admin === "true";
+      console.log("User is admin:", isAdmin);
       
       if (isAdmin) {
         router.push("/teacher");
       } else {
         router.push("/student");
       }
-    } catch (error: any) {
-      setErr(error.message || "Login error");
+    } catch (error: Error | unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Login error";
+      console.error("Login error details:", error);
+      setErr(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect } from "react";
+import { ConversationBase } from "@/types";
 
 // Hooks
 import { useAuth } from "@/hooks/useAuth";
@@ -78,8 +79,8 @@ export default function StudentPage() {
     await createNewConversation(token);
   };
 
-  const handleSelectConversation = async (conversation: any) => {
-    selectConversation(conversation);
+  const handleSelectConversation = async (conversation: ConversationBase) => {
+    selectConversation({ ...conversation, messages: [] });
     await loadMessages(conversation.id, token);
   };
 
@@ -200,7 +201,6 @@ export default function StudentPage() {
           <ResizableLayout.Panel defaultSize={40} minSize={25} className="flex flex-col overflow-hidden">
             <FractureDetectionPanel
               token={token}
-              user={user}
               documentHistory={combinedHistory}
               onRefreshDocuments={handleDocumentRefresh}
             />

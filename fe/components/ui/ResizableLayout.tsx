@@ -48,28 +48,28 @@ export function ResizableLayout({ children, className = "" }: ResizableLayoutPro
     setIsDragging(true);
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging || !containerRef.current) return;
-
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const containerWidth = containerRect.width;
-    const mouseX = e.clientX - containerRect.left;
-
-    const newLeftSize = (mouseX / containerWidth) * 100;
-
-    const leftMinSize = leftPanel?.props.minSize ?? 10;
-    const rightMinSize = rightPanel?.props.minSize ?? 10;
-    const maxLeftSize = 100 - rightMinSize;
-
-    const constrainedSize = Math.max(leftMinSize, Math.min(maxLeftSize, newLeftSize));
-    setLeftPanelSize(constrainedSize);
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
   useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging || !containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const containerWidth = containerRect.width;
+      const mouseX = e.clientX - containerRect.left;
+
+      const newLeftSize = (mouseX / containerWidth) * 100;
+
+      const leftMinSize = leftPanel?.props.minSize ?? 10;
+      const rightMinSize = rightPanel?.props.minSize ?? 10;
+      const maxLeftSize = 100 - rightMinSize;
+
+      const constrainedSize = Math.max(leftMinSize, Math.min(maxLeftSize, newLeftSize));
+      setLeftPanelSize(constrainedSize);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
     if (isDragging) {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
@@ -83,7 +83,7 @@ export function ResizableLayout({ children, className = "" }: ResizableLayoutPro
         document.body.style.userSelect = "";
       };
     }
-  }, [isDragging]);
+  }, [isDragging, leftPanel?.props.minSize, rightPanel?.props.minSize]);
 
   const rightPanelSize = 100 - leftPanelSize;
 

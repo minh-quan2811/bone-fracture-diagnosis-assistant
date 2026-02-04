@@ -33,7 +33,7 @@ export default function TeacherPage() {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-        <h1>🧑‍🏫 Teacher UI</h1>
+        <h1>🧑&mdash;‍🏫 Teacher UI</h1>
         <button 
           onClick={handleLogout}
           style={{ 
@@ -48,7 +48,7 @@ export default function TeacherPage() {
           Logout
         </button>
       </div>
-      <p>You're logged in as a teacher/admin.</p>
+      <p>You&apos;re logged in as a teacher/admin.</p>
     </div>
   );
 }

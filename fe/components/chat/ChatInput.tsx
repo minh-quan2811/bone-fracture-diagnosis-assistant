@@ -32,7 +32,7 @@ export function ChatInput({
     
     try {
       await onSendMessage(message);
-    } catch (error) {
+    } catch {
       setInputMessage(message);
     }
   };
