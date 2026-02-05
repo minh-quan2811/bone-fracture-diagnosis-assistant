@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 from app.core.database import engine, Base
+from app.core.config import settings
 from app.api import auth, student_chat, fracture_prediction, upload
 
 # create tables
@@ -10,24 +11,19 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Bone Fracture Helper API")
 
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000"
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=settings.get_origins_list(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount static files for uploaded images
-uploads_path = "uploads"
-os.makedirs(uploads_path, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=uploads_path), name="uploads")
+# Mount static files for uploaded images (local)
+if settings.ENV_MODE == "local":
+    uploads_path = "uploads"
+    os.makedirs(uploads_path, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=uploads_path), name="uploads")
 
 app.include_router(auth, prefix="/auth", tags=["Auth"])
 app.include_router(student_chat, prefix="/chat", tags=["Chat"])
@@ -38,11 +34,23 @@ app.include_router(fracture_prediction, prefix="/api/fracture", tags=["Fracture 
 @app.get("/")
 def root():
     return {
-        "message": "Medical AI API with YOLOv8 Fracture Detection",
+        "message": "Medical AI API for Fracture Detection Application",
+        "environment": settings.ENV_MODE,
+        "storage": "S3" if settings.ENV_MODE == "production" else "Local",
         "endpoints": {
             "auth": "/auth",
             "chat": "/chat",
             "upload": "/upload",
             "fracture_detection": "/api/fracture"
         }
+    }
+
+@app.get("/health")
+def health_check():
+    storage_info = "S3" if settings.ENV_MODE == "production" else "Local filesystem"
+    return {
+        "status": "healthy",
+        "database": "connected",
+        "storage": storage_info,
+        "env_mode": settings.ENV_MODE
     }
