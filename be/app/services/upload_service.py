@@ -9,8 +9,11 @@ from app.enums.document_status import DocumentStatus
 from app.services.bone_fracture_predict.predictor import fracture_predictor
 from app.services.rag_service import VectorStorageManager
 from app.services.embedding_service import EmbeddingPipeline
-from app.utils.image_utils import resize_image_to_640, save_uploaded_file
-from app.utils.document_utils import save_document_file
+from app.utils.image_utils import resize_image_to_640
+from app.utils.storage_manager import storage_manager
+from app.core.config import settings
+import tempfile
+import time
 
 
 class UploadService:
@@ -30,14 +33,17 @@ class UploadService:
             # Resize image to 640x640
             resized_bytes, original_width, original_height, padding_info = resize_image_to_640(file_content)
             
-            # Save resized image
-            file_path = save_uploaded_file(resized_bytes, filename, current_user.id)
+            # Generate unique filename
+            timestamp = int(time.time())
+            unique_filename = f"{timestamp}_{filename}"
             
-            # Create prediction record with padding info
+            image_path = storage_manager.save_image(resized_bytes, unique_filename, current_user.id)
+                        
+            # Create prediction record
             db_prediction = FracturePrediction(
                 user_id=current_user.id,
                 image_filename=filename,
-                image_path=file_path,
+                image_path=image_path,
                 image_size=len(resized_bytes),
                 image_width=640,
                 image_height=640,
@@ -54,19 +60,16 @@ class UploadService:
             db.commit()
             db.refresh(db_prediction)
             
-            # Add padding info to response
             response_dict = {
                 **db_prediction.__dict__,
                 "padding_info": padding_info,
+                "storage_mode": settings.ENV_MODE,
                 "status": 200
             }
             
             return response_dict, 200
             
         except Exception as e:
-            if 'file_path' in locals() and os.path.exists(file_path):
-                os.remove(file_path)
-            
             return {
                 "error": f"Upload failed: {str(e)}",
                 "status": 500
@@ -83,8 +86,9 @@ class UploadService:
     ) -> Tuple[Dict, int]:
         """
         Upload and process a document (PDF, DOCX)
+        Storage location determined by ENV_MODE
         """
-        file_path = None
+        temp_file_path = None
         
         # Create initial document upload record
         db_document = DocumentUpload(
@@ -98,23 +102,31 @@ class UploadService:
         db.refresh(db_document)
         
         try:
-            file_path = save_document_file(file_content, filename, current_user.id)
+            timestamp = int(time.time())
+            unique_filename = f"{timestamp}_{filename}"
             
+            # Save using storage manager
+            document_path = storage_manager.save_document(file_content, unique_filename, current_user.id)
+                        
             # Update status to processing
             db_document.status = DocumentStatus.PROCESSING
             db.commit()
             
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as temp_file:
+                temp_file.write(file_content)
+                temp_file_path = temp_file.name
+            
             # Process file through embedding pipeline
             embedding_pipeline = EmbeddingPipeline()
-            nodes = embedding_pipeline.process_file(file_path=file_path, embed_nodes=True)
+            nodes = embedding_pipeline.process_file(file_path=temp_file_path, embed_nodes=True)
             
             # Store nodes in vector database
-            storage_manager = VectorStorageManager(
+            storage_manager_rag = VectorStorageManager(
                 collection_name=collection_name,
                 index_id=index_id
             )
             
-            storage_manager.add_nodes_to_db(nodes=nodes, insert_batch_size=20)
+            storage_manager_rag.add_nodes_to_db(nodes=nodes, insert_batch_size=20)
             
             # Update status to completed
             db_document.status = DocumentStatus.COMPLETED
@@ -127,18 +139,15 @@ class UploadService:
                 "file_type": db_document.file_type,
                 "status": db_document.status.value,
                 "created_at": db_document.created_at.isoformat(),
+                "storage_path": document_path,
+                "storage_mode": settings.ENV_MODE,
                 "message": "Document processed successfully",
                 "status_code": 200
             }, 200
             
         except ValueError as ve:
-            # Update status to failed
             db_document.status = DocumentStatus.FAILED
             db.commit()
-            
-            # Clean up file if processing failed
-            if file_path and os.path.exists(file_path):
-                os.remove(file_path)
             
             return {
                 "error": str(ve),
@@ -146,18 +155,18 @@ class UploadService:
             }, 400
             
         except Exception as e:
-            # Update status to failed
             db_document.status = DocumentStatus.FAILED
             db.commit()
-            
-            # Clean up file if processing failed
-            if file_path and os.path.exists(file_path):
-                os.remove(file_path)
             
             return {
                 "error": f"Document processing failed: {str(e)}",
                 "status": 500
             }, 500
+        
+        finally:
+            # Clean up temp file
+            if temp_file_path and os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
     
     @staticmethod
     def get_document_history(

@@ -10,6 +10,7 @@ from app.enums.fracture_type import FractureType
 from app.schemas.fracture_prediction import StudentAnnotationsSubmit
 from app.services.bone_fracture_predict.predictor import fracture_predictor
 from app.services.annotation_comparision import comparison_service
+from app.utils.storage_manager import storage_manager
 
 
 class FractureService:
@@ -115,14 +116,10 @@ class FractureService:
         if prediction.user_id != current_user.id and not current_user.is_admin:
             return {"error": "Access denied", "status": 403}
         
-        if not os.path.exists(prediction.image_path):
-            return {"error": "Image file not found", "status": 404}
-        
         try:
-            # Read the already resized 640x640 image
-            with open(prediction.image_path, 'rb') as f:
-                file_content = f.read()
-            
+            # Get file bytes using storage manager (handles both local and S3)
+            file_content = storage_manager.get_file_bytes(prediction.image_path)
+                        
             # Run AI prediction
             prediction_result = fracture_predictor.predict(file_content)
             
@@ -144,7 +141,6 @@ class FractureService:
                     try:
                         fracture_type_enum = FractureType(fracture_type_value.lower())
                     except ValueError:
-                        print(f"Warning: Invalid fracture_type '{fracture_type_value}', setting to None")
                         fracture_type_enum = None
                 else:
                     fracture_type_enum = fracture_type_value
@@ -175,10 +171,6 @@ class FractureService:
             db.commit()
             db.refresh(prediction)
             
-            # Log for debugging
-            print(f"AI Prediction completed: {prediction_result['detection_count']} detections")
-            for i, det in enumerate(prediction_result["detections"]):
-                print(f"  Detection {i+1}: class_id={det['class_id']}, fracture_type={det.get('fracture_type')}, confidence={det['confidence']:.2f}")
             
             return {
                 "message": "AI prediction completed successfully",
@@ -189,6 +181,11 @@ class FractureService:
                 "status": 200
             }
             
+        except FileNotFoundError as e:
+            return {
+                "error": "Image file not found",
+                "status": 404
+            }
         except Exception as e:
             db.rollback()
             print(f"AI prediction error: {str(e)}")
