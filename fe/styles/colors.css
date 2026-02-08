@@ -1,0 +1,79 @@
+/* Healing Greens Color Palette */
+:root {
+  /* Primary Colors */
+  --color-primary-lightest: #A8D5BA;
+  --color-primary-light: #6BBF8A;
+  --color-primary-medium: #4B9B6E;
+  --color-primary-dark: #2E7D5C;
+  --color-primary-darkest: #1B5E3A;
+
+  /* Neutral Colors */
+  --color-white: #ffffff;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+
+  /* Status Colors */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
+
+  /* Semantic Colors Using Healing Greens */
+  --color-primary: var(--color-primary-dark);
+  --color-primary-hover: var(--color-primary-darkest);
+  --color-secondary: var(--color-primary-light);
+  --color-secondary-hover: var(--color-primary-medium);
+  --color-background: var(--color-white);
+  --color-surface: var(--color-gray-50);
+  --color-border: var(--color-gray-200);
+  --color-text-primary: var(--color-gray-900);
+  --color-text-secondary: var(--color-gray-600);
+  --color-text-tertiary: var(--color-gray-500);
+
+  /* Annotation Canvas Colors */
+  --color-annotation-inactive: #3b82f6;
+  --color-annotation-active: #2563eb;
+  --color-annotation-drawing: #f9b804;
+}
+
+/* Utility Classes */
+.btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.btn-secondary {
+  background-color: var(--color-secondary);
+  color: var(--color-white);
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--color-secondary-hover);
+}
+
+.bg-primary-subtle {
+  background-color: var(--color-primary-lightest);
+  color: var(--color-primary-darkest);
+}
+
+.text-primary {
+  color: var(--color-primary);
+}
+
+.border-primary {
+  border-color: var(--color-primary);
+}

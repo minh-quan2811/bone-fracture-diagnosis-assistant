@@ -12,8 +12,8 @@ export function LoadingSpinner({ size = "md", text }: LoadingSpinnerProps) {
 
   return (
     <div className="flex flex-col items-center justify-center">
-      <div className={`animate-spin rounded-full border-b-2 border-indigo-600 ${sizes[size]}`}></div>
-      {text && <p className="mt-4 text-gray-600">{text}</p>}
+      <div className={`animate-spin rounded-full border-b-2 border-[var(--color-primary)] ${sizes[size]}`}></div>
+      {text && <p className="mt-4 text-[var(--color-text-secondary)]">{text}</p>}
     </div>
   );
 }

@@ -7,8 +7,8 @@ interface OverallStatsCardProps {
 
 export function OverallStatsCard({ stats }: OverallStatsCardProps) {
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-      <h2 className="text-xl font-bold text-gray-900 mb-4">
+    <div className="bg-white rounded-lg shadow-md p-6 border border-[var(--color-border)]">
+      <h2 className="text-xl font-bold text-[var(--color-text-primary)] mb-4">
         Overall Performance Summary
       </h2>
       

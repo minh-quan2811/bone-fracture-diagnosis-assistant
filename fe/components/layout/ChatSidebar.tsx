@@ -28,23 +28,23 @@ export function ChatSidebar({
   };
 
   return (
-    <div className="w-56 bg-white shadow-lg flex flex-col h-full overflow-hidden">
+    <div className="w-56 bg-white shadow-lg flex flex-col h-full overflow-hidden border-r border-gray-300">
       {/* Header - Fixed at top with close button */}
-      <div className="flex-shrink-0 border-b border-gray-200">
+      <div className="flex-shrink-0 border-b border-gray-300">
         <div className="p-4">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-lg font-bold text-gray-900">Bone Helper</h1>
+          <h1 className="text-lg font-bold text-[var(--color-text-primary)]">Bone Helper</h1>
           <SidebarToggleButton 
             isVisible={true}
             onToggle={onToggleSidebar}
-            className="hover:bg-gray-100"
+            className="hover:bg-[var(--color-surface)]"
           />
         </div>
         
         {user && (
           <div className="mb-3">
-            <p className="text-sm text-gray-600">Welcome back!</p>
-            <p className="font-medium text-gray-900 text-sm">{user.username}</p>
+            <p className="text-sm text-[var(--color-text-secondary)]">Welcome back!</p>
+            <p className="font-medium text-[var(--color-text-primary)] text-sm">{user.username}</p>
             <Badge 
               variant={user.role === "student" ? "student" : "teacher"}
               size="sm"
@@ -70,12 +70,12 @@ export function ChatSidebar({
       </div>
 
       {/* Logout at bottom */}
-      <div className="p-3 border-t border-gray-200 flex justify-center">
+      <div className="p-3 border-t border-gray-300 flex justify-center">
         <button
           onClick={onLogout}
-          className="px-3 py-1.5 bg-red-500 text-white text-sm font-medium rounded-md hover:bg-red-600 transition"
+          className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition"
         >
-          Logout
+          Sign Out
         </button>
       </div>
     </div>

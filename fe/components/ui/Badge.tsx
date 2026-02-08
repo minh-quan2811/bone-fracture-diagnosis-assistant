@@ -6,10 +6,10 @@ interface BadgeProps {
 
 export function Badge({ children, variant = "default", size = "sm" }: BadgeProps) {
   const variants = {
-    student: "bg-blue-100 text-blue-700",
-    teacher: "bg-purple-100 text-purple-700",
-    assistant: "bg-gray-100 text-gray-600",
-    default: "bg-gray-100 text-gray-700"
+    student: "bg-[var(--color-primary-lightest)] text-[var(--color-primary-darkest)]",
+    teacher: "bg-[var(--color-primary-light)] bg-opacity-20 text-[var(--color-primary-dark)]",
+    assistant: "bg-[var(--color-gray-100)] text-[var(--color-gray-600)]",
+    default: "bg-[var(--color-gray-100)] text-[var(--color-gray-700)]"
   };
 
   const sizes = {
