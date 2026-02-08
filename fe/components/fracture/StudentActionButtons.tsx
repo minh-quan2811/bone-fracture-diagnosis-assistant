@@ -38,11 +38,10 @@ export function StudentActionButtons({
         onClick={onToggleAnnotating}
         className={`w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
           isAnnotating
-            ? 'bg-blue-600 text-white hover:bg-blue-700'
-            : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+            ? 'bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)]'
+            : 'bg-[var(--color-primary-lightest)] text-[var(--color-primary-darkest)] hover:bg-[var(--color-primary-light)]'
         }`}
       >
-        <span className="text-lg">✏️</span>
         {isAnnotating ? 'Stop Annotating' : 'Start Annotating'}
       </button>
 
@@ -52,16 +51,13 @@ export function StudentActionButtons({
           <button
             onClick={onSubmitAnnotations}
             disabled={isSubmittingAnnotations || !allAnnotationsHaveDetails}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-success)] text-white text-sm font-medium rounded-lg hover:opacity-90 disabled:bg-[var(--color-gray-400)] disabled:cursor-not-allowed transition-colors"
             title={
               !allAnnotationsHaveDetails
                 ? 'Please select fracture type for all annotations'
                 : ''
             }
           >
-            <span className="text-lg">
-              {isSubmittingAnnotations ? '⏳' : '✅'}
-            </span>
             {isSubmittingAnnotations
               ? 'Submitting...'
               : `Submit ${annotations.length} Fracture${
@@ -71,9 +67,8 @@ export function StudentActionButtons({
 
           <button
             onClick={onClearAnnotations}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500 text-white text-sm font-medium rounded-lg hover:bg-yellow-600 transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-warning)] text-white text-sm font-medium rounded-lg hover:opacity-90 transition-colors"
           >
-            <span className="text-lg">🗑️</span>
             Clear Draft
           </button>
         </>
@@ -84,11 +79,8 @@ export function StudentActionButtons({
         <button
           onClick={onSubmitNoFracture}
           disabled={isSubmittingAnnotations}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-error)] text-white text-sm font-medium rounded-lg hover:opacity-90 disabled:bg-[var(--color-gray-400)] disabled:cursor-not-allowed transition-colors"
         >
-          <span className="text-lg">
-            {isSubmittingAnnotations ? '⏳' : '🚫'}
-          </span>
           {isSubmittingAnnotations ? 'Submitting...' : 'Submit: No Fractures'}
         </button>
       )}

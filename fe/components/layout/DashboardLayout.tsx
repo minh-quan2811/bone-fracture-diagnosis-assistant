@@ -6,7 +6,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    <div className="h-screen w-screen bg-gray-50 flex overflow-hidden fixed inset-0">
+    <div className="h-screen w-screen bg-[var(--color-surface)] flex overflow-hidden fixed inset-0">
       {children}
     </div>
   );

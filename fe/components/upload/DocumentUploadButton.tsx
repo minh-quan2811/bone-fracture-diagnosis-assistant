@@ -1,5 +1,4 @@
 import { useRef } from 'react';
-import { Upload } from 'lucide-react';
 
 interface DocumentUploadButtonProps {
   onFileSelect: (file: File) => void;
@@ -43,13 +42,15 @@ export function DocumentUploadButton({
         disabled={disabled}
         className={`p-2 rounded-lg transition-colors ${
           disabled 
-            ? 'text-gray-400 cursor-not-allowed' 
-            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+            ? 'text-[var(--color-gray-400)] cursor-not-allowed' 
+            : 'text-[var(--color-gray-600)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]'
         } ${className}`}
         title="Upload document (PDF, DOCX)"
         aria-label="Upload document"
       >
-        <Upload className="w-5 h-5" />
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        </svg>
       </button>
     </>
   );
