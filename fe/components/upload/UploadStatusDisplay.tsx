@@ -1,4 +1,3 @@
-import { Loader, CheckCircle, AlertCircle } from 'lucide-react';
 import { UploadStatusDisplayProps } from '@/types';
 
 export function UploadStatusDisplay({ 
@@ -10,19 +9,32 @@ export function UploadStatusDisplay({
 
   const configs = {
     uploading: {
-      icon: <Loader className="w-5 h-5 animate-spin text-indigo-600" />,
-      bgColor: 'bg-indigo-50',
-      borderColor: 'border-indigo-200',
-      textColor: 'text-indigo-900'
+      icon: (
+        <svg className="w-5 h-5 animate-spin" style={{ color: 'var(--color-primary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      ),
+      bgColor: 'bg-[var(--color-primary-lightest)]',
+      borderColor: 'border-[var(--color-primary-light)]',
+      textColor: 'text-[var(--color-primary-darkest)]'
     },
     success: {
-      icon: <CheckCircle className="w-5 h-5 text-green-600" />,
+      icon: (
+        <svg className="w-5 h-5" style={{ color: 'var(--color-success)' }} fill="currentColor" viewBox="0 0 24 24">
+          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+        </svg>
+      ),
       bgColor: 'bg-green-50',
       borderColor: 'border-green-200',
       textColor: 'text-green-900'
     },
     error: {
-      icon: <AlertCircle className="w-5 h-5 text-red-600" />,
+      icon: (
+        <svg className="w-5 h-5" style={{ color: 'var(--color-error)' }} fill="currentColor" viewBox="0 0 24 24">
+          <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
+        </svg>
+      ),
       bgColor: 'bg-red-50',
       borderColor: 'border-red-200',
       textColor: 'text-red-900'

@@ -24,8 +24,8 @@ export function Input({
   return (
     <div className="space-y-1">
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
-          {label} {required && <span className="text-red-500">*</span>}
+        <label className="block text-sm font-medium text-[var(--color-text-primary)]">
+          {label} {required && <span className="text-[var(--color-error)]">*</span>}
         </label>
       )}
       <input
@@ -35,12 +35,12 @@ export function Input({
         placeholder={placeholder}
         required={required}
         disabled={disabled}
-        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors ${
-          error ? "border-red-300" : "border-gray-300"
+        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] outline-none transition-colors ${
+          error ? "border-[var(--color-error)]" : "border-[var(--color-border)]"
         } ${className}`}
       />
       {error && (
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-sm text-[var(--color-error)]">{error}</p>
       )}
     </div>
   );

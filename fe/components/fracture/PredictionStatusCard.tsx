@@ -38,7 +38,7 @@ export function PredictionStatusCard({
           <button
             onClick={onRevise}
             disabled={isRevising}
-            className="ml-2 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+            className="ml-2 px-2 py-1 bg-[var(--color-info)] text-white text-xs rounded hover:opacity-90 disabled:bg-[var(--color-gray-400)] disabled:cursor-not-allowed transition-colors whitespace-nowrap"
           >
             {isRevising ? 'Loading...' : 'Revise'}
           </button>

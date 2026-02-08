@@ -19,7 +19,7 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
       onClick={onClick}
       className={`w-full text-left p-3 rounded-lg transition-colors ${
         isActive
-          ? "bg-indigo-50 border-indigo-200 border"
+          ? "bg-[var(--color-primary-lightest)] border-[var(--color-primary-light)] border"
           : "hover:bg-gray-50"
       }`}
     >

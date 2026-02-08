@@ -20,14 +20,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       <div
         className={`max-w-2xl rounded-lg p-4 ${
           isUser
-            ? "bg-indigo-600 text-white"
+            ? "bg-[var(--color-primary)] text-white"
             : "bg-white shadow-sm border border-gray-200"
         }`}
       >
         {message.role === "assistant" && (
           <div className="flex items-center space-x-2 mb-2">
-            <div className="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center">
-              <span className="text-indigo-600 text-xs font-bold">AI</span>
+            <div className="w-6 h-6 bg-[var(--color-primary-lightest)] rounded-full flex items-center justify-center">
+              <span className="text-[var(--color-primary)] text-xs font-bold">AI</span>
             </div>
             <span className="text-xs text-gray-500">AI Assistant</span>
           </div>
@@ -57,7 +57,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           )}
         </div>
         
-        <p className={`text-xs mt-2 ${isUser ? "text-indigo-200" : "text-gray-500"}`}>
+        <p className={`text-xs mt-2 ${isUser ? "text-[var(--color-primary-light)]" : "text-gray-500"}`}>
           {formatTime(message.created_at)}
         </p>
       </div>
