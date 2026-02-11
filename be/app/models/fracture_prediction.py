@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, Text, DateTime, ForeignKey, Boolean, func, Enum
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import JSONB
 from app.core.database import Base
 from app.enums.prediction_source import PredictionSource
 from app.enums.fracture_type import FractureType
@@ -29,6 +30,9 @@ class FracturePrediction(Base):
     ai_inference_time = Column(Float, nullable=True)
     confidence_threshold = Column(Float, default=0.25)
     ai_max_confidence = Column(Float, nullable=True)
+    
+    # AI-generated feedback
+    ai_feedback = Column(JSONB, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
