@@ -5,57 +5,88 @@ interface PredictionStatusCardProps {
   currentPrediction: PredictionResult | null;
   isRevising: boolean;
   onRevise: () => void;
+  isRunningAI: boolean;
+  onRunAI: () => void;
 }
 
 export function PredictionStatusCard({
   currentPrediction,
   isRevising,
-  onRevise
+  onRevise,
+  isRunningAI,
+  onRunAI
 }: PredictionStatusCardProps) {
   if (!currentPrediction?.has_student_predictions) {
     return null;
   }
 
   const hasAiPredictions = currentPrediction.has_ai_predictions;
-  const fractureCount = currentPrediction.student_prediction_count;
-  const fractureText = fractureCount === 0
-    ? ' (No fractures detected)'
-    : ` (${fractureCount} fracture${fractureCount > 1 ? 's' : ''})`;
 
-  // State 1: Submitted but no AI yet - Can revise
+  // Submitted but no AI yet - Can revise and run AI
   if (!hasAiPredictions) {
     return (
-      <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <p className="text-green-800 text-xs font-medium mb-1">
-              Prediction Submitted{fractureText}
+      <div className="bg-green-50 rounded-lg p-3 border-2 border-green-300">
+        <div className="space-y-3">
+          <div>
+            <p className="text-green-800 text-sm font-semibold mb-1">
+              ✓ Prediction Submitted
             </p>
             <p className="text-green-700 text-xs">
-              You can still revise your prediction before running AI comparison
+              You can revise your prediction or run AI comparison
             </p>
           </div>
-          <button
-            onClick={onRevise}
-            disabled={isRevising}
-            className="ml-2 px-2 py-1 bg-[var(--color-info)] text-white text-xs rounded hover:opacity-90 disabled:bg-[var(--color-gray-400)] disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-          >
-            {isRevising ? 'Loading...' : 'Revise'}
-          </button>
+          
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onRevise}
+              disabled={isRevising}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              {isRevising ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Loading...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Revise
+                </>
+              )}
+            </button>
+            
+            <button
+              onClick={onRunAI}
+              disabled={isRunningAI}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              {isRunningAI ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Running AI...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  Run AI Prediction
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  // State 2: AI prediction run - Locked
-  return (
-    <div className="bg-blue-50 rounded-lg p-2 border border-blue-200">
-      <p className="text-blue-800 text-xs font-medium">
-        Prediction Locked{fractureText}
-      </p>
-      <p className="text-blue-700 text-xs mt-1">
-        AI comparison completed. Clear all to start new prediction.
-      </p>
-    </div>
-  );
+  return null;
 }

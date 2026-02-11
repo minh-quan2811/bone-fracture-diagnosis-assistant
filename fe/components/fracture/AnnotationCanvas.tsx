@@ -1,5 +1,17 @@
 import React, { useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { StudentAnnotation, Detection } from '../../types/fracture';
+import '../../styles/colors.css';
+
+// Styling colors
+const getCanvasColors = () => {
+  const root = document.documentElement;
+  const styles = getComputedStyle(root);
+  return {
+    colorActive: styles.getPropertyValue('--color-annotation-active').trim(),
+    colorInactive: styles.getPropertyValue('--color-annotation-inactive').trim(),
+    colorDrawing: styles.getPropertyValue('--color-annotation-drawing').trim(),
+  };
+};
 
 interface AnnotationCanvasProps {
   image: HTMLImageElement | null;
@@ -10,13 +22,16 @@ interface AnnotationCanvasProps {
   showStudentAnnotations: boolean;
   showAiPredictions: boolean;
   isDrawing: boolean;
+  activeAnnotationId: string | null;
   onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseUp: () => void;
+  onAnnotationClick: (annotation: StudentAnnotation) => void;
 }
 
 export interface AnnotationCanvasRef {
   redraw: () => void;
+  getCanvasRect: () => DOMRect | null;
 }
 
 export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvasProps>(({
@@ -28,9 +43,11 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
   showStudentAnnotations,
   showAiPredictions,
   isDrawing,
+  activeAnnotationId,
   onMouseDown,
   onMouseMove,
-  onMouseUp
+  onMouseUp,
+  onAnnotationClick
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -40,6 +57,9 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // Styling colors
+    const { colorActive, colorInactive, colorDrawing } = getCanvasColors();
 
     // Set canvas size to match image natural size for 1:1 pixel mapping
     canvas.width = image.width;
@@ -112,8 +132,9 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
     // Draw draft annotations (not yet confirmed)
     if (showStudentAnnotations) {
       annotations.forEach((annotation, index) => {
-        ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 3;
+        const isActive = annotation.id === activeAnnotationId;
+        ctx.strokeStyle = isActive ? colorActive : colorInactive;
+        ctx.lineWidth = isActive ? 4 : 3;
         ctx.setLineDash([]);
         ctx.strokeRect(
           annotation.x * scaleX,
@@ -122,7 +143,7 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
           annotation.height * scaleY
         );
 
-        ctx.fillStyle = '#3b82f6';
+        ctx.fillStyle = isActive ? colorActive : colorInactive;
         ctx.font = 'bold 14px Arial';
         
         let label = `Draft #${index + 1}`;
@@ -136,7 +157,7 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
 
     // Draw current rectangle being drawn
     if (currentRect && isDrawing) {
-      ctx.strokeStyle = '#10b981';
+      ctx.strokeStyle = colorDrawing;
       ctx.lineWidth = 3;
       ctx.setLineDash([5, 5]);
       ctx.strokeRect(
@@ -146,7 +167,7 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
         currentRect.height * scaleY
       );
       
-      ctx.fillStyle = '#10b981';
+      ctx.fillStyle = colorDrawing;
       ctx.font = 'bold 14px Arial';
       ctx.setLineDash([]);
       ctx.fillText('Drawing...', currentRect.x * scaleX, currentRect.y * scaleY - 5);
@@ -170,7 +191,8 @@ export const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvas
   }, [drawCanvas]);
 
   useImperativeHandle(ref, () => ({
-    redraw: drawCanvas
+    redraw: drawCanvas,
+    getCanvasRect: () => canvasRef.current?.getBoundingClientRect() || null
   }));
 
   return (
