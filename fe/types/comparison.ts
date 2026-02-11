@@ -61,6 +61,7 @@ export interface DetailedComparison {
 }
 
 export interface ComparisonFeedback {
+  image_analysis: string;
   overall: string;
   detection_performance: string;
   classification_performance: string;

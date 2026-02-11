@@ -70,13 +70,13 @@ async def run_ai_prediction(
 
 
 @router.get("/predictions/{prediction_id}/comparison", response_model=PredictionComparison)
-def get_prediction_comparison(
+async def get_prediction_comparison(
     prediction_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get detailed comparison between student and AI predictions"""
-    result = fracture_service.get_prediction_comparison(prediction_id, current_user, db)
+    """Get detailed comparison between student and AI predictions with AI-generated feedback"""
+    result = await fracture_service.get_prediction_comparison(prediction_id, current_user, db)
     
     if result.get("status") == 404:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result.get("error"))

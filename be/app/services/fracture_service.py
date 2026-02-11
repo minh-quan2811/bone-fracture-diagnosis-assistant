@@ -10,6 +10,7 @@ from app.enums.fracture_type import FractureType
 from app.schemas.fracture_prediction import StudentAnnotationsSubmit
 from app.services.bone_fracture_predict.predictor import fracture_predictor
 from app.services.annotation_comparision import comparison_service
+from app.services.ai_feedback_service import ai_feedback_service
 from app.utils.storage_manager import storage_manager
 
 
@@ -197,13 +198,13 @@ class FractureService:
             }
     
     @staticmethod
-    def get_prediction_comparison(
+    async def get_prediction_comparison(
         prediction_id: int,
         current_user: User,
         db: Session
     ) -> Dict:
         """
-        Get detailed comparison between student and AI predictions
+        Get detailed comparison between student and AI predictions with AI-generated feedback
         """
         prediction = db.query(FracturePrediction).filter(
             FracturePrediction.id == prediction_id
@@ -236,7 +237,28 @@ class FractureService:
             ai_detections
         )
         
-        feedback = comparison_service.generate_feedback(comparison_result)
+        # Generate AI-powered feedback if not already cached
+        if not prediction.ai_feedback:
+            try:
+                feedback = await ai_feedback_service.generate_feedback(
+                    prediction.image_path,
+                    student_detections,
+                    ai_detections,
+                    comparison_result
+                )
+                
+                # Store in database as JSONB
+                prediction.ai_feedback = feedback
+                db.commit()
+                db.refresh(prediction)
+            except Exception as e:
+                print(f"Failed to generate AI feedback: {str(e)}")
+                # Fallback to rule-based feedback
+                feedback = comparison_service.generate_feedback(comparison_result)
+                feedback['image_analysis'] = f'Unable to perform AI analysis: {str(e)}'
+        else:
+            # Use cached feedback
+            feedback = prediction.ai_feedback
         
         legacy_metrics = {
             "student_count": comparison_result['summary']['student_count'],
