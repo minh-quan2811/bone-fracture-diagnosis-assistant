@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { DocumentUpload } from '@/types';
 import { Detection, StudentAnnotation } from '@/types/fracture';
 import { useFractureImage } from '@/hooks/useFractureImage';
@@ -6,13 +6,15 @@ import { useAnnotationDrawing } from '@/hooks/useAnnotationDrawing';
 import { useFracturePredictionAPI } from '@/hooks/useFracturePredictionAPI';
 import { usePredictionRevision } from '@/hooks/usePredictionRevision';
 import { AnnotationCanvas, AnnotationCanvasRef } from './AnnotationCanvas';
+import { AnnotationDialog } from './AnnotationDialog';
+import { AnnotationVisibilityToggle } from './AnnotationVisibilityToggle';
 import { ImageUploadZone } from './ImageUploadZone';
 import { ComparisonResultsCard } from './ComparisonResultsCard';
 import { DetectionLists } from './DetectionLists';
 import { ErrorDisplay } from './ErrorDisplay';
-import { AnnotationAttributeSelector } from './AnnotationAttributeSelector';
 import { PredictionStatusCard } from './PredictionStatusCard';
 import { StudentActionButtons } from './StudentActionButtons';
+import { FractureReferencePanel } from './FractureReferencePanel';
 
 // Import History Components
 import { HistorySection } from './history/HistorySection';
@@ -42,6 +44,9 @@ export function FractureDetectionPanel({
   const [showStudentAnnotations, setShowStudentAnnotations] = React.useState(true);
   const [showAiPredictions, setShowAiPredictions] = React.useState(true);
   const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null);
+  const [openDialogId, setOpenDialogId] = useState<string | null>(null);
+  const [isFetchingComparison, setIsFetchingComparison] = useState(false);
 
   // Custom hooks (existing)
   const { 
@@ -107,6 +112,17 @@ export function FractureDetectionPanel({
 
   const canSubmit = currentPrediction && !currentPrediction.has_student_predictions;
 
+  // Auto-open dialog when new annotation is created
+  useEffect(() => {
+    if (annotations.length > 0 && !isDrawing) {
+      const latestAnnotation = annotations[annotations.length - 1];
+      if (!latestAnnotation.fracture_type) {
+        setOpenDialogId(latestAnnotation.id);
+        setActiveAnnotationId(latestAnnotation.id);
+      }
+    }
+  }, [annotations.length, isDrawing]);
+
   // Auto-fetch comparison when both predictions exist
   useEffect(() => {
     if (
@@ -114,7 +130,9 @@ export function FractureDetectionPanel({
       currentPrediction?.has_ai_predictions && 
       !comparison
     ) {
-      fetchComparison(currentPrediction.id, token);
+      setIsFetchingComparison(true);
+      fetchComparison(currentPrediction.id, token)
+        .finally(() => setIsFetchingComparison(false));
     }
   }, [
     currentPrediction?.has_student_predictions, 
@@ -148,13 +166,15 @@ export function FractureDetectionPanel({
       setCurrentPrediction(prediction);
       clearAnnotations();
       setAllDetections([]);
+      setOpenDialogId(null);
+      setActiveAnnotationId(null);
     } catch (err: Error | unknown) {
       console.error('Upload error:', err);
     }
   };
 
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isAnnotating || !image) return;
+    if (!image) return;
 
     const canvas = e.currentTarget;
     const rect = canvas.getBoundingClientRect();
@@ -164,7 +184,18 @@ export function FractureDetectionPanel({
     const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
 
-    onMouseDown(x, y);
+    if (isAnnotating) {
+      onMouseDown(x, y);
+    } else {
+      for (let i = annotations.length - 1; i >= 0; i--) {
+        const ann = annotations[i];
+        if (x >= ann.x && x <= ann.x + ann.width &&
+            y >= ann.y && y <= ann.y + ann.height) {
+          handleAnnotationClick(ann);
+          return;
+        }
+      }
+    }
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -185,11 +216,35 @@ export function FractureDetectionPanel({
     onMouseUp();
   };
 
-  const handleSaveAnnotationDetails = (annotation: StudentAnnotation) => {
+  const handleAnnotationClick = (annotation: StudentAnnotation) => {
+    if (openDialogId === annotation.id) {
+      setOpenDialogId(null);
+      setActiveAnnotationId(null);
+    } else {
+      setActiveAnnotationId(annotation.id);
+      setOpenDialogId(annotation.id);
+    }
+  };
+
+  const handleUpdateAnnotation = (annotation: StudentAnnotation) => {
     updateAnnotation(annotation.id, {
       fracture_type: annotation.fracture_type || '',
       notes: annotation.notes
     });
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialogId(null);
+  };
+
+  const handleRemoveAnnotation = (id: string) => {
+    removeAnnotation(id);
+    if (openDialogId === id) {
+      setOpenDialogId(null);
+    }
+    if (activeAnnotationId === id) {
+      setActiveAnnotationId(null);
+    }
   };
 
   const handleSubmitAnnotations = async () => {
@@ -207,6 +262,8 @@ export function FractureDetectionPanel({
     await submitAnnotationsAPI(currentPrediction.id, annotations, token);
     clearAnnotations();
     setIsAnnotating(false);
+    setOpenDialogId(null);
+    setActiveAnnotationId(null);
   };
 
   const handleSubmitNoFracture = async () => {
@@ -215,6 +272,8 @@ export function FractureDetectionPanel({
     await submitAnnotationsAPI(currentPrediction.id, [], token);
     clearAnnotations();
     setIsAnnotating(false);
+    setOpenDialogId(null);
+    setActiveAnnotationId(null);
   };
 
   const handleRevisePrediction = async () => {
@@ -246,6 +305,8 @@ export function FractureDetectionPanel({
           }
           
           setIsAnnotating(true);
+          setOpenDialogId(null);
+          setActiveAnnotationId(null);
         }
       );
     } catch (err) {
@@ -263,10 +324,12 @@ export function FractureDetectionPanel({
     clearImage();
     clearAnnotations();
     setIsAnnotating(false);
+    setOpenDialogId(null);
+    setActiveAnnotationId(null);
   };
 
   return (
-    <div className="h-full bg-white border-l border-gray-200 flex flex-col overflow-hidden">
+    <div className="h-full bg-white border-l border-gray-200 flex flex-col overflow-visible">
       {/* Header */}
       <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center justify-between">
@@ -299,7 +362,7 @@ export function FractureDetectionPanel({
       </div>
 
       {!isCollapsed && (
-        <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
           <div className="p-4 space-y-4">
             {/* Error Display */}
             <ErrorDisplay error={error} onDismiss={() => setError(null)} />
@@ -312,10 +375,10 @@ export function FractureDetectionPanel({
                   isUploading={isUploading}
                 />
                 
-                {/* PREDICTION HISTORY SECTION */}
+                {/* Prediction History Section */}
                 <HistorySection onNavigateToHistory={() => setShowHistory(true)} />
                 
-                {/* DOCUMENT HISTORY SECTION */}
+                {/* Document History Section */}
                 <DocumentHistorySection 
                   onNavigateToHistory={() => setShowDocumentHistory(true)}
                   recentDocuments={documentHistory}
@@ -323,125 +386,100 @@ export function FractureDetectionPanel({
               </>
             ) : (
               <>
-                {/* Scrollable Image Container */}
-                <div 
-                  ref={containerRef} 
-                  className="w-full bg-gray-100 rounded-lg border-2 border-gray-300 flex items-center justify-center p-4 overflow-auto"
-                  style={{ maxHeight: '600px' }}
-                >
-                  <AnnotationCanvas
-                    ref={canvasRef}
-                    image={image}
-                    annotations={annotations}
-                    detections={allDetections}
-                    currentRect={currentRect}
-                    isAnnotating={isAnnotating}
-                    showStudentAnnotations={showStudentAnnotations}
-                    showAiPredictions={showAiPredictions}
-                    isDrawing={isDrawing}
-                    onMouseDown={handleCanvasMouseDown}
-                    onMouseMove={handleCanvasMouseMove}
-                    onMouseUp={handleCanvasMouseUp}
+                {/* Image Container with Overlays */}
+                <div className="space-y-3">
+                  {/* Status Card */}
+                  <PredictionStatusCard
+                    currentPrediction={currentPrediction}
+                    isRevising={isRevising}
+                    onRevise={handleRevisePrediction}
+                    isRunningAI={isRunningAI}
+                    onRunAI={handleRunAiPrediction}
                   />
-                </div>
 
-                {/* Controls Below Image - Split Layout */}
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Left: Student Action Buttons */}
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-gray-900 text-sm">Student Actions</h4>
-                    
-                    <PredictionStatusCard
-                      currentPrediction={currentPrediction}
-                      isRevising={isRevising}
-                      onRevise={handleRevisePrediction}
-                    />
-                    
-                    <StudentActionButtons
-                      isAnnotating={isAnnotating}
+                  {/* Image with Canvas */}
+                  <div 
+                    ref={containerRef} 
+                    className="relative w-full bg-gray-100 rounded-lg border-2 border-gray-300 flex items-center justify-center p-4"
+                    style={{ minHeight: '400px' }}
+                  >
+                    <AnnotationCanvas
+                      ref={canvasRef}
+                      image={image}
                       annotations={annotations}
-                      isSubmittingAnnotations={isSubmittingAnnotations}
-                      allAnnotationsHaveDetails={allAnnotationsHaveDetails}
-                      canSubmit={!!canSubmit}
-                      onToggleAnnotating={() => setIsAnnotating(!isAnnotating)}
-                      onSubmitAnnotations={handleSubmitAnnotations}
-                      onSubmitNoFracture={handleSubmitNoFracture}
-                      onClearAnnotations={clearAnnotations}
+                      detections={allDetections}
+                      currentRect={currentRect}
+                      isAnnotating={isAnnotating}
+                      showStudentAnnotations={showStudentAnnotations}
+                      showAiPredictions={showAiPredictions}
+                      isDrawing={isDrawing}
+                      activeAnnotationId={activeAnnotationId}
+                      onMouseDown={handleCanvasMouseDown}
+                      onMouseMove={handleCanvasMouseMove}
+                      onMouseUp={handleCanvasMouseUp}
+                      onAnnotationClick={handleAnnotationClick}
                     />
 
-                    <button
-                      onClick={handleRunAiPrediction}
-                      disabled={isRunningAI || !currentPrediction?.has_student_predictions}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                      title={!currentPrediction?.has_student_predictions ? 'Submit your prediction first' : ''}
-                    >
-                      {isRunningAI ? 'Running AI...' : 'Run AI Prediction'}
-                    </button>
-                    
-                    {!currentPrediction?.has_student_predictions && (
-                      <div className="bg-yellow-50 rounded-lg p-2 border border-yellow-200">
-                        <p className="text-yellow-800 text-xs">
-                          Submit your prediction first to unlock AI comparison
-                        </p>
-                      </div>
+                    {/* Visibility Toggle */}
+                    {image && (
+                      <AnnotationVisibilityToggle
+                        showStudentAnnotations={showStudentAnnotations}
+                        showAiPredictions={showAiPredictions}
+                        onToggleStudent={() => setShowStudentAnnotations(!showStudentAnnotations)}
+                        onToggleAi={() => setShowAiPredictions(!showAiPredictions)}
+                        studentCount={currentPrediction?.student_prediction_count || annotations.length}
+                        aiCount={currentPrediction?.ai_prediction_count || 0}
+                        hasAiPredictions={!!currentPrediction?.has_ai_predictions}
+                      />
                     )}
-
-                    <div className="pt-2 space-y-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={showStudentAnnotations}
-                          onChange={(e) => setShowStudentAnnotations(e.target.checked)}
-                          className="form-checkbox h-4 w-4 text-blue-600 rounded"
-                        />
-                        <span className="text-sm text-gray-900">
-                          Show Student ({currentPrediction?.student_prediction_count || annotations.length})
-                        </span>
-                      </label>
-                      
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={showAiPredictions}
-                          onChange={(e) => setShowAiPredictions(e.target.checked)}
-                          className="form-checkbox h-4 w-4 text-red-600 rounded"
-                        />
-                        <span className="text-sm text-gray-900">
-                          Show AI ({currentPrediction?.ai_prediction_count || 0})
-                        </span>
-                      </label>
-                    </div>
                   </div>
 
-                  {/* Right: Annotation Attributes */}
-                  <div>
-                    <AnnotationAttributeSelector
-                      annotations={annotations}
-                      onUpdateAnnotation={handleSaveAnnotationDetails}
-                      onRemoveAnnotation={removeAnnotation}
-                      isAnnotating={isAnnotating}
-                    />
-                  </div>
+                  {/* Annotation Dialogs */}
+                  {image && annotations.map((annotation, index) => {
+                    if (openDialogId !== annotation.id) return null;
+
+                    return (
+                      <AnnotationDialog
+                        key={annotation.id}
+                        annotation={annotation}
+                        index={index}
+                        canvasRef={canvasRef}
+                        image={image}
+                        onUpdate={handleUpdateAnnotation}
+                        onRemove={handleRemoveAnnotation}
+                        onClose={handleCloseDialog}
+                        isActive={activeAnnotationId === annotation.id}
+                      />
+                    );
+                  })}
+
+                  {/* Horizontal Action Buttons */}
+                  <StudentActionButtons
+                    isAnnotating={isAnnotating}
+                    annotations={annotations}
+                    isSubmittingAnnotations={isSubmittingAnnotations}
+                    allAnnotationsHaveDetails={allAnnotationsHaveDetails}
+                    canSubmit={!!canSubmit}
+                    onToggleAnnotating={() => setIsAnnotating(!isAnnotating)}
+                    onSubmitAnnotations={handleSubmitAnnotations}
+                    onSubmitNoFracture={handleSubmitNoFracture}
+                    onClearAnnotations={clearAnnotations}
+                  />
+
+                  {/* Fracture Reference Panel */}
+                  {!currentPrediction?.has_student_predictions && <FractureReferencePanel />}
                 </div>
 
-                {isAnnotating && (
-                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                    <p className="text-blue-900 font-medium text-sm">Annotation Mode Active</p>
-                    <p className="text-blue-800 text-sm mt-1">
-                      Click and drag on the image to mark fracture areas. 
-                      Select fracture type for each annotation on the right.
-                    </p>
-                    <p className="text-blue-700 text-xs mt-1">
-                      If you don&apos;t see any fractures, stop annotating and click &quot;Submit: No Fractures&quot;
-                    </p>
-                  </div>
-                )}
-
+                {/* Comparison or Detection Lists */}
                 {showComparisonOnly ? (
                   <ComparisonResultsCard comparison={comparison} />
                 ) : (
                   currentPrediction && (currentPrediction.has_student_predictions || currentPrediction.has_ai_predictions) && (
-                    <DetectionLists detections={allDetections} />
+                    <DetectionLists 
+                      detections={allDetections} 
+                      isRunningAI={isRunningAI}
+                      isFetchingComparison={isFetchingComparison}
+                    />
                   )
                 )}
               </>
