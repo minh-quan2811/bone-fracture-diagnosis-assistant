@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { StudentAnnotation } from '../types/fracture';
+import { StudentAnnotation } from '@/types/fracture';
 
 interface UseAnnotationDrawingReturn {
   annotations: StudentAnnotation[];

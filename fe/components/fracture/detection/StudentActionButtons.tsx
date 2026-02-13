@@ -1,5 +1,5 @@
 import React from 'react';
-import { StudentAnnotation } from '../../types/fracture';
+import { StudentAnnotation } from '@/types/fracture';
 
 interface StudentActionButtonsProps {
   // State

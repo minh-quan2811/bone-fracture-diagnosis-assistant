@@ -141,6 +141,10 @@ export class FractureService {
    * Get fracture image URL for display
    */
   static getImageUrl(imagePath: string): string {
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return `${imagePath}?t=${Date.now()}`;
+    }
+    
     const normalizedPath = imagePath.replace(/\\/g, "/");
     return `${API_BASE}/${normalizedPath}?t=${Date.now()}`;
   }

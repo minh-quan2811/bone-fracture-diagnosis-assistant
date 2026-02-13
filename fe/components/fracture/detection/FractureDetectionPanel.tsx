@@ -1,26 +1,15 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { DocumentUpload } from '@/types';
 import { Detection, StudentAnnotation } from '@/types/fracture';
-import { useFractureImage } from '@/hooks/useFractureImage';
-import { useAnnotationDrawing } from '@/hooks/useAnnotationDrawing';
-import { useFracturePredictionAPI } from '@/hooks/useFracturePredictionAPI';
-import { usePredictionRevision } from '@/hooks/usePredictionRevision';
-import { AnnotationCanvas, AnnotationCanvasRef } from './AnnotationCanvas';
-import { AnnotationDialog } from './AnnotationDialog';
-import { AnnotationVisibilityToggle } from './AnnotationVisibilityToggle';
-import { ImageUploadZone } from './ImageUploadZone';
-import { ComparisonResultsCard } from './ComparisonResultsCard';
-import { DetectionLists } from './DetectionLists';
-import { ErrorDisplay } from './ErrorDisplay';
-import { PredictionStatusCard } from './PredictionStatusCard';
-import { StudentActionButtons } from './StudentActionButtons';
-import { FractureReferencePanel } from './FractureReferencePanel';
+import { useFractureImage, useAnnotationDrawing, useFracturePredictionAPI, usePredictionRevision } from '@/hooks/fracture';
+import { AnnotationCanvas, AnnotationCanvasRef, AnnotationDialog, AnnotationVisibilityToggle } from '../annotation';
+import { ImageUploadZone } from '../upload';
+import { ComparisonResultsCard, DetectionLists, ErrorDisplay, PredictionStatusCard, StudentActionButtons } from './index';
+import { FractureReferencePanel } from '../reference';
 
 // Import History Components
-import { HistorySection } from './history/HistorySection';
-import { HistoryPage } from './history/HistoryPage';
-import { DocumentHistorySection } from './document/DocumentHistorySection';
-import { DocumentHistoryPage } from './document/DocumentHistoryPage';
+import { HistorySection, HistoryPage } from '../history';
+import { DocumentHistorySection, DocumentHistoryPage } from '../document';
 
 interface FractureDetectionPanelProps {
   token: string;

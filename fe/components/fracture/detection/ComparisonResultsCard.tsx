@@ -1,5 +1,5 @@
 import React from 'react';
-import { PredictionComparison } from '../../types/comparison';
+import { PredictionComparison } from '@/types/comparison';
 
 interface ComparisonResultsCardProps {
   comparison: PredictionComparison | null;

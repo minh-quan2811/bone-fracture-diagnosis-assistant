@@ -15,21 +15,21 @@ export function useHistoryData(token: string) {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         const allPredictions = await FractureService.getAllPredictions(token);
-        
+
         const completedPredictions = allPredictions.filter(
           (p: FracturePrediction) => p.has_student_predictions && p.has_ai_predictions
         );
-        
+
         setPredictions(completedPredictions);
-        
+
         const comparisonMap = new Map<number, PredictionComparison>();
-        
+
         for (const prediction of completedPredictions) {
           try {
             const comparison = await FractureService.getComparison(
-              prediction.id, 
+              prediction.id,
               token
             );
             comparisonMap.set(prediction.id, comparison);
@@ -40,7 +40,7 @@ export function useHistoryData(token: string) {
             );
           }
         }
-        
+
         setComparisons(comparisonMap);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load history");
@@ -60,11 +60,11 @@ export function useHistoryData(token: string) {
     setError(null);
   };
 
-  return { 
-    predictions, 
-    comparisons, 
-    isLoading, 
+  return {
+    predictions,
+    comparisons,
+    isLoading,
     error,
-    refetch 
+    refetch
   };
 }

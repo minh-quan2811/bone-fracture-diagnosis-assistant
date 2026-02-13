@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { StudentAnnotation } from '../../types/fracture';
+import { StudentAnnotation } from '@/types/fracture';
 import { AnnotationCanvasRef } from './AnnotationCanvas';
 
 interface AnnotationDialogProps {

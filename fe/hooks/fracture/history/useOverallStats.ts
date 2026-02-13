@@ -15,7 +15,7 @@ export function useOverallStats(
 ): OverallStats {
   return useMemo(() => {
     const comparisonArray = Array.from(comparisons.values());
-    
+
     if (comparisonArray.length === 0) {
       return {
         total_images: 0,
@@ -28,27 +28,27 @@ export function useOverallStats(
     }
 
     const totalMatches = comparisonArray.reduce(
-      (sum, c) => sum + c.detailed_comparison.summary.matched_count, 
+      (sum, c) => sum + c.detailed_comparison.summary.matched_count,
       0
     );
-    
+
     const totalStudentPredictions = comparisonArray.reduce(
-      (sum, c) => sum + c.detailed_comparison.summary.student_count, 
+      (sum, c) => sum + c.detailed_comparison.summary.student_count,
       0
     );
-    
+
     const totalAiPredictions = comparisonArray.reduce(
-      (sum, c) => sum + c.detailed_comparison.summary.ai_count, 
+      (sum, c) => sum + c.detailed_comparison.summary.ai_count,
       0
     );
 
     const avgIoU = comparisonArray.reduce(
-      (sum, c) => sum + c.detailed_comparison.iou_metrics.f1_score, 
+      (sum, c) => sum + c.detailed_comparison.iou_metrics.f1_score,
       0
     ) / comparisonArray.length;
 
     const fractureTypeAccuracy = comparisonArray.reduce(
-      (sum, c) => sum + c.detailed_comparison.fracture_type_metrics.accuracy, 
+      (sum, c) => sum + c.detailed_comparison.fracture_type_metrics.accuracy,
       0
     ) / comparisonArray.length;
 

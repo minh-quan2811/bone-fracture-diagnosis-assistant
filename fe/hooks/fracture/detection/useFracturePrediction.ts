@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { StudentAnnotation, Detection, FracturePrediction } from '../types/fracture';
+import { StudentAnnotation, Detection, FracturePrediction } from '@/types/fracture';
 
 interface UseFracturePredictionReturn {
   // State

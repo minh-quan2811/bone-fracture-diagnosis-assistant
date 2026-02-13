@@ -1,5 +1,5 @@
 import React from 'react';
-import { OverallStats } from '../../../hooks/history/useOverallStats';
+import { OverallStats } from '@/hooks/fracture/history';
 
 interface OverallStatsCardProps {
   stats: OverallStats;

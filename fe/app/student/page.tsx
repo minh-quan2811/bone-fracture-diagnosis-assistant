@@ -3,12 +3,10 @@ import { useEffect } from "react";
 import { ConversationBase } from "@/types";
 
 // Hooks
-import { useAuth } from "@/hooks/useAuth";
-import { useConversations } from "@/hooks/useConversations";
-import { useMessages } from "@/hooks/useMessages";
-import { useDocumentHistory } from "@/hooks/useDocumentHistory";
-import { useSidebar } from "@/hooks/useSidebar";
-import { usePreventBodyScroll } from "@/hooks/usePreventBodyScroll";
+import { useAuth } from "@/hooks/auth";
+import { useConversations, useMessages } from "@/hooks/chat";
+import { useDocumentHistory } from "@/hooks/upload";
+import { useSidebar, usePreventBodyScroll } from "@/hooks/shared";
 
 // Components
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -19,7 +17,7 @@ import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { FractureDetectionPanel } from "@/components/fracture/FractureDetectionPanel";
+import { FractureDetectionPanel } from "@/components/fracture/detection";
 import { ResizableLayout } from "@/components/ui/ResizableLayout";
 import { SidebarToggleButton } from "@/components/ui/SidebarToggleButton";
 
