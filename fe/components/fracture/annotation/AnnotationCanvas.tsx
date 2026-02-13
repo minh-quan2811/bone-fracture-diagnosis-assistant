@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { StudentAnnotation, Detection } from '../../types/fracture';
-import '../../styles/colors.css';
+import { StudentAnnotation, Detection } from '@/types/fracture';
+import '@/styles/colors.css';
 
 // Styling colors
 const getCanvasColors = () => {

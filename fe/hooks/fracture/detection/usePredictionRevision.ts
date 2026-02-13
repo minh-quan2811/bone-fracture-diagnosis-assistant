@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { FractureService } from '@/services/fractureService';
-import { StudentAnnotation, PredictionResult } from '../types/fracture';
+import { StudentAnnotation, PredictionResult } from '@/types/fracture';
 
 interface UsePredictionRevisionReturn {
   isRevising: boolean;

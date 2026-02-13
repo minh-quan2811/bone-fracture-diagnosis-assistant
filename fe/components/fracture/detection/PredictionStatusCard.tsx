@@ -1,5 +1,5 @@
 import React from 'react';
-import { PredictionResult } from '../../types/fracture';
+import { PredictionResult } from '@/types/fracture';
 
 interface PredictionStatusCardProps {
   currentPrediction: PredictionResult | null;

@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useHistoryData } from '../../../hooks/history/useHistoryData';
-import { useOverallStats } from '../../../hooks/history/useOverallStats';
+import { useHistoryData, useOverallStats } from '@/hooks/fracture/history';
 import { FractureService } from '@/services/fractureService';
 import { OverallStatsCard } from './OverallStatsCard';
-import { ComparisonResultsCard } from '../ComparisonResultsCard';
+import { ComparisonResultsCard } from '../detection';
 
 interface HistoryPageProps {
   token: string;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Detection } from '../../types/fracture';
+import { Detection } from '@/types/fracture';
 
 interface DetectionListsProps {
   detections: Detection[];
