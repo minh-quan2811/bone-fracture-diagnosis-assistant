@@ -44,7 +44,7 @@ async def upload_image(
         )
 
 
-@router.post("/document", response_model=DocumentUploadOut)
+@router.post("/document")
 async def upload_document(
     file: UploadFile = File(...),
     collection_name: str = "medical_documents",
@@ -53,23 +53,31 @@ async def upload_document(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Upload a document (PDF, DOCX) and process it through the embedding pipeline.
-    The document will be parsed, chunked, embedded, and stored in the vector database.
+    Upload a document and process asynchronously
     """
     validate_document_file(file)
     
     try:
         file_content = await file.read()
-        result, status_code = upload_service.upload_document(
-            file_content, file.filename, current_user, collection_name, index_id, db
+        
+        # Encode file content as base64 for Celery
+        import base64
+        file_content_b64 = base64.b64encode(file_content).decode('utf-8')
+        
+        # Dispatch Celery task
+        from app.tasks.document_tasks import process_document
+        task = process_document.delay(
+            user_id=current_user.id,
+            file_content_b64=file_content_b64,
+            filename=file.filename,
+            collection_name=collection_name,
+            index_id=index_id
         )
         
-        if status_code == 400:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result.get("error"))
-        elif status_code == 500:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=result.get("error"))
-        
-        return result
+        return {
+            "task_id": task.id,
+            "message": "Document upload started"
+        }
         
     except HTTPException:
         raise

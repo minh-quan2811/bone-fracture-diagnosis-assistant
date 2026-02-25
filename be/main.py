@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 import os
 from app.core.database import engine, Base
 from app.core.config import settings
-from app.api import auth, student_chat, fracture_prediction, upload
+from app.api import auth, student_chat, fracture_prediction, upload, tasks
 
 # create tables
 Base.metadata.create_all(bind=engine)
@@ -29,7 +29,7 @@ app.include_router(auth, prefix="/auth", tags=["Auth"])
 app.include_router(student_chat, prefix="/chat", tags=["Chat"])
 app.include_router(upload, prefix="/upload", tags=["Upload"])
 app.include_router(fracture_prediction, prefix="/api/fracture", tags=["Fracture Detection"])
-
+app.include_router(tasks, prefix="/api", tags=["tasks"])
 
 @app.get("/")
 def root():

@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     S3_BUCKET_IMAGES: str
     S3_BUCKET_DOCUMENTS: str
     ALLOWED_ORIGINS: str
+    REDIS_URL: str
 
     class Config:
         env_file = '.env'

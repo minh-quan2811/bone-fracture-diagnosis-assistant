@@ -50,22 +50,22 @@ async def run_ai_prediction(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Run AI prediction on a 640x640 resized image"""
-    result = fracture_service.run_ai_prediction(prediction_id, current_user, db)
+    """Run AI prediction asynchronously"""
+    # Check prediction exists and belongs to user
+    prediction = fracture_service.get_prediction_details(prediction_id, current_user, db)
+    if not prediction:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prediction not found")
     
-    if result.get("status") == 404:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=result.get("error"))
-    elif result.get("status") == 403:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=result.get("error"))
-    elif result.get("status") == 500:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=result.get("error"))
+    # Dispatch Celery task
+    from app.tasks.fracture_tasks import run_ai_prediction as run_ai_task
+    task = run_ai_task.delay(
+        user_id=current_user.id,
+        prediction_id=prediction_id
+    )
     
     return {
-        "message": result.get("message"),
-        "has_fracture": result.get("has_fracture"),
-        "detection_count": result.get("detection_count"),
-        "max_confidence": result.get("max_confidence"),
-        "inference_time": result.get("inference_time")
+        "task_id": task.id,
+        "message": "AI prediction started"
     }
 
 

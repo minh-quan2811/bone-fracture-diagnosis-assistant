@@ -152,7 +152,7 @@ You are provided with an X-ray image showing bone fracture(s). The image has bou
             for i, match in enumerate(matches, 1):
                 prompt += f"{i}. Student: {match['student_fracture_type']} | AI: {match['ai_fracture_type']} | IoU: {match['iou']:.2%} | Match: {'✓' if match['fracture_type_match'] else '✗'}\n"
         
-        prompt += f"""
+        prompt += """
 
 ## Your Task
 Provide detailed educational feedback in the following structure:
@@ -188,7 +188,7 @@ Be educational, supportive, and reference specific visual features from the X-ra
         
         return prompt
     
-    async def generate_feedback(
+    def generate_feedback(
         self,
         image_path: str,
         student_detections: List[FractureDetection],
@@ -244,7 +244,7 @@ Be educational, supportive, and reference specific visual features from the X-ra
             ]
             
             # Get structured response
-            response = await structured_llm.ainvoke([HumanMessage(content=message_content)])
+            response = structured_llm.invoke([HumanMessage(content=message_content)])
             
             # Convert Pydantic model to dict
             return {

@@ -1,4 +1,5 @@
 import { StudentAnnotation } from "@/types";
+import { TaskService } from "./taskService";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -63,7 +64,16 @@ export class FractureService {
       throw new Error(errorData.detail || "AI prediction failed");
     }
 
-    return res.json();
+    const { task_id } = await res.json();
+
+    // Poll for result
+    const result = await TaskService.pollTaskResult(task_id, token);
+
+    if (result.status === "error") {
+      throw new Error(result.error);
+    }
+
+    return result.result;
   }
 
   /**
