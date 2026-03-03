@@ -4,6 +4,9 @@ from typing import List
 class Settings(BaseSettings):
     SECRET_KEY: str
     POSTGRES_URL: str
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
     GEMINI_API_KEY: str
     QDRANT_API_KEY: str
     QDRANT_URL: str
