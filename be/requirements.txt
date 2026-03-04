@@ -12,6 +12,8 @@ pydantic==2.12.5
 pydantic-settings==2.12.0
 pydantic-core==2.41.5
 pydantic[email]
+pytest
+httpx
 ultralytics==8.4.9
 opencv-python==4.11.0.86
 Pillow==12.1.0
