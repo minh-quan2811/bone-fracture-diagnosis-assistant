@@ -1,61 +1,234 @@
-# bone-fracture-diagnosis-assistant
+# FracturAInsight-Agent - Learn Fracture Diagnosis Through AI Assistant Platform
 
+![version](https://img.shields.io/badge/version-1.0.0-blue)
+![license](https://img.shields.io/badge/license-MIT-brightgreen)
+![python](https://img.shields.io/badge/python-3.11+-3776AB)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688)
+![Next.js](https://img.shields.io/badge/Next.js-14.0-black)
+![Docker](https://img.shields.io/badge/Docker-containerised-2496ED)
+![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF)
+
+---
+
+## 🎬 Demo Video
+
+[![Demo Video](https://img.shields.io/badge/Watch%20Demo-YouTube-FF0000?logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=your-video-id)
+
+---
+
+## 📋 Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+
+---
+
+## 🔍 Overview
 A comprehensive web application for medical students to learn bone fracture detection through AI-assisted education. The platform combines interactive chatbot assistance, AI-powered fracture detection, and document-based learning with RAG (Retrieval Augmented Generation).
 
-# Overview
+
 This platform bridges theoretical medical education with practical diagnostic skills:
 
-Fracture Detection Engine: Deep learning model trained on X-ray images for bone fracture identification
-Conversational AI: LangChain/LangGraph-based chatbot for medical Q&A and learning guidance
-RAG System: LlamaIndex pipeline with Qdrant vector store for document-enhanced responses
-Learning Model: Students annotate → AI predicts → System compares → Feedback provided
-Supported Fracture Types: Not yet decide
-Body Regions: Not yet decide
+- **Fracture Detection Engine**: YOLOv8 deep learning model trained on X-ray images for bone fracture identification
+- **Conversational AI**: LangChain/LangGraph-based chatbot for medical Q&A and learning guidance
+- **RAG System**: LlamaIndex pipeline with Qdrant vector store for document-enhanced responses
+- **Learning Model**: Students annotate → AI predicts → System compares → Feedback provided
+- **CI/CD Pipeline**: Fully automated testing, Docker image build, and deployment via GitHub Actions to AWS EC2
 
-## Project Structure
+---
 
-```
-.
-├── be/                 # Backend (FastAPI)
-│   ├── alembic/       # Database migrations
-│   ├── app/           # Application code
-│   └── requirements.txt
-├── fe/                # Frontend (Next.js)
-    ├── app/          # Next.js pages
-    ├── components/   # React components
-    ├── lib/          # API client
-    └── package.json
-```
-
-## Tech Stack
-
-### Backend
-- **Framework**: FastAPI (Python)
-- **Database**: PostgreSQL with SQLAlchemy ORM
-- **Authentication**: JWT tokens with bcrypt password hashing
-- **AI/ML**: 
-  - Deep Learning model for bone fracture detection
-  - Custom embedding pipeline for RAG
-  - Vector database for document storage
-- **Migration**: Alembic
-
-### Frontend
-- **Framework**: Next.js 14 (React)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-
-
-## Features
+## ✨ Features
 
 ### Student Features
-- **Interactive Chatbot**: Ask questions about bone fractures, treatments, and symptoms
-- **Fracture Detection Practice**: 
+- **Interactive Chatbot**: Ask questions about bone fractures, treatments, and anatomy
+- **Fracture Detection Practice**:
   - Upload X-ray images for analysis
   - Make your own fracture predictions
   - Compare your predictions with AI model results
   - Receive detailed feedback on accuracy
-- **Document Upload & RAG**: Upload medical documents (PDF, DOCX,..) for context-aware chatbot responses
+- **Document Upload & RAG**: Upload medical documents (PDF, DOCX) for context-aware chatbot responses
 
 ### Teacher Features
-- Dashboard access for monitoring student progress
+- Dashboard for monitoring student progress
 - Administrative capabilities
+
+---
+
+## 🏗️ Architecture
+
+![Architecture Diagram](assets/architecture.jpg)
+
+---
+
+## 🛠️ Tech Stack
+
+### Backend
+- **FastAPI** — Python REST API framework
+- **PostgreSQL** — primary relational database
+- **Redis** — message broker for async task queue
+- **Celery** — background task processing for AI workloads
+- **SQLAlchemy + Alembic** — ORM and database migrations
+- **PyTorch + YOLOv8** — bone fracture detection model
+- **LangChain + LangGraph** — conversational AI and agent framework
+- **LlamaIndex** — RAG pipeline for document processing
+- **Qdrant** — vector database for document embeddings
+- **AWS S3** — object storage for images and documents
+
+### Frontend
+- **Next.js 14** — React framework
+- **TypeScript** — type-safe JavaScript
+- **Tailwind CSS** — utility-first styling
+
+### Infrastructure & DevOps
+- **Docker** — containerisation
+- **AWS EC2** — backend server
+- **AWS RDS** — managed PostgreSQL
+- **AWS ECR** — private Docker image registry
+- **GitHub Actions** — CI/CD pipeline (test → build → deploy)
+- **Nginx** — reverse proxy
+- **Vercel** — frontend deployment
+
+- [Installation](#installation)
+
+## 🚀 Installation
+
+### Prerequisites
+
+- Python 3.11+
+- Node.js 18+
+- PostgreSQL 13+
+- Redis
+- Docker (optional)
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/minh-quan2811/bone-fracture-diagnosis-assistant.git
+cd bone-fracture-diagnosis-assistant
+```
+
+### 2. Backend Setup
+
+```bash
+cd be
+```
+
+Create and activate a virtual environment:
+
+```bash
+python -m venv venv
+
+# Mac/Linux
+source venv/bin/activate
+
+# Windows
+venv\Scripts\activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Configure environment variables:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your values:
+
+
+Run database migrations:
+
+```bash
+alembic upgrade head
+```
+
+Start the API server:
+
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Start the Celery worker (separate terminal):
+
+```bash
+celery -A celery_app worker --loglevel=info -Q fracture_queue,document_queue --concurrency=2
+```
+
+Backend is available at: http://localhost:8000
+Swagger docs at: http://localhost:8000/docs
+
+---
+
+### 3. Frontend Setup
+
+```bash
+cd fe
+```
+
+Install dependencies:
+
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
+
+Configure environment variables:
+
+```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local`:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+Start the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+```
+
+Frontend is available at: http://localhost:3000
+
+---
+
+### 4. Running with Docker (For Backend)
+
+From the `be/` directory:
+
+```bash
+docker compose up --build
+```
+
+To run in the background:
+
+```bash
+docker compose up --build -d
+```
+
+View logs:
+
+```bash
+docker compose logs -f
+```
+
+Stop all containers:
+
+```bash
+docker compose down
+```

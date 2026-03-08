@@ -8,69 +8,32 @@ FastAPI-based backend for the Medical AI Learning Platform, providing authentica
 - **Student Chatbot**: AI-powered medical assistant for bone fracture education
 - **Fracture Detection**: YOLOv8-based fracture detection from X-ray images
 - **Document Processing**: RAG pipeline with embedding and vector storage
-- **Database**: PostgreSQL with SQLAlchemy ORM
-- **Migrations**: Alembic for database version control
+- **Async Tasks**: Celery workers for background AI processing
+- **Database**: PostgreSQL with SQLAlchemy ORM and Alembic migrations
 
 ## Tech Stack
 
-- **FastAPI**: Modern Python web framework
-- **SQLAlchemy**: ORM for database operations
-- **Alembic**: Database migration tool
-- **PostgreSQL**: Primary database
-- **Pillow**: Image processing
-- **PyTorch**: Deep learning framework for YOLOv8
-- **JWT**: Token-based authentication
-- **LangChain & LangGraph**: Conversational AI framework for building the chatbot
-- **LlamaIndex**: RAG (Retrieval Augmented Generation) framework for document processing
-- **Qdrant**: Vector database for storing document embeddings
-
-## Project Structure
-
-```
-be/
-├── alembic/
-│   ├── versions/          # Migration files
-│   ├── env.py             # Alembic configuration
-│   └── script.py.mako     # Migration template
-├── app/
-│   ├── api/               # API endpoints
-│   │   ├── auth.py        # Authentication endpoints
-│   │   ├── student_chat.py # Chatbot endpoints
-│   │   ├── fracture_prediction.py # Fracture detection endpoints
-│   │   ├── upload.py      # File upload endpoints
-│   │   └── api_utils/     # Utility functions
-│   ├── core/              # Core functionality
-│   │   ├── config.py      # Configuration
-│   │   ├── database.py    # Database connection
-│   │   └── security.py    # Security utilities
-│   ├── models/            # SQLAlchemy models
-│   │   ├── user.py
-│   │   ├── conversation.py
-│   │   ├── message.py
-│   │   ├── fracture_prediction.py
-│   │   └── document_upload.py
-│   ├── schemas/           # Pydantic schemas
-│   ├── services/          # Business logic
-│   │   ├── student_chatbot.py
-│   │   ├── bone_fracture_predict/
-│   │   ├── rag_service.py
-│   │   └── embedding_service.py
-│   ├── enums/             # Enum definitions
-│   └── main.py            # Application entry point
-├── requirements.txt       # Python dependencies
-├── .env.example          # Environment variables template
-└── README.md             # This file
-```
+- **FastAPI** — Python web framework
+- **PostgreSQL** — primary database
+- **Redis** — message broker for Celery
+- **Celery** — async task queue
+- **SQLAlchemy + Alembic** — ORM and migrations
+- **PyTorch + YOLOv8** — bone fracture detection model
+- **LangChain + LangGraph** — conversational AI framework
+- **LlamaIndex** — RAG framework for document processing
+- **Qdrant** — vector database for embeddings
+- **AWS S3** — file storage for images and documents
 
 ## Installation
 
 ### Prerequisites
-- Python 3.9 or higher
+- Python 3.11 or higher
 - PostgreSQL 13 or higher
 - pip package manager
 
-### Setup Steps
+# Setup Steps
 
+## Option 1 — Without Docker
 1. **Create virtual environment**:
 ```bash
 python -m venv venv
@@ -95,4 +58,49 @@ alembic upgrade head
 5. **Start development server**:
 ```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+## 6. Start the Celery worker (separate terminal)
+
+```bash
+celery -A celery_app worker --loglevel=info -Q fracture_queue,document_queue --concurrency=2
+```
+
+## Option 2 — With Docker
+
+### 1. Build and start all containers
+
+```bash
+docker compose up --build
+```
+
+To run in the background:
+
+```bash
+docker compose up --build -d
+```
+
+### 2. View logs
+
+```bash
+# All containers
+docker compose logs -f
+
+# API only
+docker compose logs -f api
+
+# Celery only
+docker compose logs -f celery_worker
+```
+
+### 3. Stop all containers
+
+```bash
+docker compose down
+```
+
+To also delete the database volume:
+
+```bash
+docker compose down -v
 ```
