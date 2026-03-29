@@ -1,0 +1,8 @@
+com_1.jpg | Comminuted fracture of the distal phalanx (tuft) of the finger, characterized by multiple bony fragments and cortical disruption at the fingertip.
+com_2.jpg | Comminuted fracture involving the proximal phalanx of the thumb, characterized by multiple fracture fragments and disruption of the normal cortical outline at the base of the thumb.
+green_1.jpg | Greenstick fracture involving the distal radius at the mid-shaft region, demonstrated by a small cortical crack with incomplete disruption of the bone cortex and mild bending deformity, consistent with an incomplete fracture pattern.
+obli_2.jpg | Oblique fracture involving the distal to mid-shaft of the tibia, characterized by a diagonal fracture line extending across the cortical bone, consistent with an oblique fracture pattern.
+spi_1.jpg | Spiral fracture involving the shaft of the humerus, characterized by a helical fracture line extending along the diaphysis, consistent with a spiral fracture pattern.
+spi_2.jpg | Spiral fracture of the humeral shaft, demonstrated by a long, obliquely curving fracture line along the diaphysis consistent with a torsional injury pattern.
+transverse_1.jpg | Transverse fracture involving the distal radius, characterized by a horizontal fracture line extending across the metaphyseal region of the bone.
+transverse_2.jpg | Transverse fracture involving the shaft of the fifth metacarpal, characterized by a horizontal fracture line extending across the cortical bone.
