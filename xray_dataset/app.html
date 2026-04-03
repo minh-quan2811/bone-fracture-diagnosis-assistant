@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fracture VLM Annotation Tool</title>
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/ai-panel.css">
 </head>
 <body>
 
@@ -44,12 +45,15 @@
     <div class="thumb-strip" id="thumbStrip"></div>
   </div>
 
-  <!-- RIGHT: TASK EDITOR -->
+  <!-- RIGHT: AI PANEL + TASK EDITOR -->
   <div class="right-panel">
     <div class="right-header">
       <span class="right-header-title">task annotations</span>
       <button class="save-btn" id="saveBtn" onclick="saveCurrentImage()" disabled>save</button>
     </div>
+
+    <!-- AI panel is injected here by aiPanel.js -->
+
     <div class="tasks-scroll" id="tasksScroll">
       <!-- Task cards injected here -->
     </div>

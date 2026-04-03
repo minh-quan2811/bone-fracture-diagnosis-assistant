@@ -8,18 +8,22 @@ import { switchSplit } from './split.js';
 import { loadImage } from './image.js';
 import { saveCurrentImage } from './annotations.js';
 import { navigate } from './navigation.js';
+import { initAIPanel } from './aiPanel.js';
 
 // ── Expose to inline HTML handlers ───────────────────────────────────────────
 // (onclick="..." attributes in app.html need these on window)
 
-window.showLoadModal    = showLoadModal;
-window.hideLoadModal    = hideLoadModal;
+window.showLoadModal     = showLoadModal;
+window.hideLoadModal     = hideLoadModal;
 window.loadDatasetFolder = loadDatasetFolder;
-window.switchSplit      = switchSplit;
-window.navigate         = navigate;
-window.saveCurrentImage = saveCurrentImage;
+window.switchSplit       = switchSplit;
+window.navigate          = navigate;
+window.saveCurrentImage  = saveCurrentImage;
+window.handleFolderLoad  = handleFolderLoad;   // used by <input onchange>
 
-window.handleFolderLoad = handleFolderLoad;   // used by <input onchange>
+// ── Init AI panel ─────────────────────────────────────────────────────────────
+
+initAIPanel();
 
 // ── Keyboard navigation ───────────────────────────────────────────────────────
 

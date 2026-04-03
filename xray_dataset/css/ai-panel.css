@@ -1,0 +1,155 @@
+/* ─── AI PANEL ─────────────────────────────────────────────────────────────── */
+
+.ai-panel {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.ai-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+
+.ai-panel-icon {
+  font-size: 11px;
+  color: #a855f7;
+  line-height: 1;
+}
+
+.ai-panel-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: #a855f7;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  flex: 1;
+}
+
+.ai-panel-model {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+/* Body — horizontal layout to save vertical space */
+.ai-panel-body {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.ai-observation {
+  flex: 1;
+  min-height: 52px;
+  max-height: 80px;
+  resize: none;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.ai-observation::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.ai-observation:focus {
+  border-color: #a855f7;
+  outline: none;
+}
+
+/* Right column: button + status stacked */
+.ai-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.ai-generate-btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: var(--radius);
+  border: none;
+  background: #a855f7;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.ai-generate-btn:hover:not(:disabled) {
+  background: #9333ea;
+}
+
+.ai-generate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-clear-btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.ai-clear-btn:hover {
+  border-color: var(--color-gray-400);
+  color: var(--text);
+}
+
+/* Spinner */
+.ai-spinner {
+  display: inline-block;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Status — sits below the textarea on its own row */
+.ai-status {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  min-height: 14px;
+  transition: color 0.2s;
+  padding: 0 12px 6px;
+}
+
+.ai-status-dim   { color: var(--text-muted); }
+.ai-status-ok    { color: var(--accent); }
+.ai-status-warn  { color: var(--warn); }
+.ai-status-error { color: #ef4444; }
+
+/* Field fill animation */
+@keyframes aiFill {
+  0%   { background: rgba(168, 85, 247, 0.12); border-color: #a855f7; }
+  100% { background: var(--surface2); border-color: var(--border); }
+}
+
+.field-input.ai-filled {
+  animation: aiFill 0.8s ease forwards;
+}
