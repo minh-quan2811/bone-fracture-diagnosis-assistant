@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fracture VLM Annotation Tool</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-title">VLM ANNOTATOR</div>
+  <div class="header-sep"></div>
+  <div class="split-tabs">
+    <button class="split-tab" onclick="switchSplit('train')">train</button>
+    <button class="split-tab" onclick="switchSplit('valid')">valid</button>
+    <button class="split-tab" onclick="switchSplit('test')">test</button>
+  </div>
+  <div class="header-sep"></div>
+  <div class="header-right">
+    <span class="counter">image <span id="counterCur">—</span> / <span id="counterTotal">—</span></span>
+    <button class="load-btn" onclick="showLoadModal()">load dataset</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT: IMAGE + THUMBNAIL -->
+  <div class="left-panel">
+    <div class="image-toolbar">
+      <button class="nav-btn" id="btnPrev" onclick="navigate(-1)" disabled>prev</button>
+      <span class="img-filename" id="imgFilename">no image loaded</span>
+      <button class="nav-btn" id="btnNext" onclick="navigate(1)" disabled>next</button>
+    </div>
+    <div class="image-area" id="imageArea">
+      <div class="empty-state" id="emptyState">
+        <div class="big">[  ]</div>
+        <p>load a dataset folder to begin</p>
+      </div>
+      <canvas id="imgCanvas" style="display:none;"></canvas>
+    </div>
+    <div class="thumb-strip" id="thumbStrip"></div>
+  </div>
+
+  <!-- RIGHT: TASK EDITOR -->
+  <div class="right-panel">
+    <div class="right-header">
+      <span class="right-header-title">task annotations</span>
+      <button class="save-btn" id="saveBtn" onclick="saveCurrentImage()" disabled>save</button>
+    </div>
+    <div class="tasks-scroll" id="tasksScroll">
+      <!-- Task cards injected here -->
+    </div>
+    <div class="status-bar">
+      <div class="status-dot" id="statusDot" style="background:var(--text-muted)"></div>
+      <span class="status-msg" id="statusMsg">ready — load a dataset to begin</span>
+      <span class="csv-hint" id="csvHint"></span>
+    </div>
+  </div>
+</div>
+
+<!-- LOAD MODAL -->
+<div class="modal-overlay hidden" id="loadModal">
+  <div class="modal">
+    <div class="modal-title">// load dataset</div>
+    <p>Select your YOLOv8 dataset root folder. The tool expects this structure:</p>
+    <div class="modal-steps">
+      <b>dataset/</b><br>
+      &nbsp;&nbsp;train/ &nbsp;&rarr; images/ &amp; labels/<br>
+      &nbsp;&nbsp;valid/ &nbsp;&rarr; images/ &amp; labels/<br>
+      &nbsp;&nbsp;test/ &nbsp;&rarr; images/ &amp; labels/<br>
+      &nbsp;&nbsp;data.yaml &nbsp;<b>(classes here)</b>
+    </div>
+    <div class="drag-zone" id="dragZone" onclick="loadDatasetFolder()">
+      <div class="drag-label">click to select folder</div>
+    </div>
+    <input type="file" id="folderInput" webkitdirectory multiple onchange="handleFolderLoad(this.files)" style="display:none;">
+    <div class="modal-btns">
+      <button class="modal-btn secondary" onclick="hideLoadModal()">cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
