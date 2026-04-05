@@ -8,40 +8,52 @@ An internal browser-based tool for annotating medical X-ray images with structur
 
 - Lets you write **Visual QA**, **Radiology Report**, and **Rationale Diagnosis** annotations per image
 - Saves annotations to a CSV file directly in your dataset folder
-- Optionally uses **Gemini AI** to auto-generate annotation drafts from your observations
+- Uses **Gemini** or **OpenRouter** to auto-generate annotation drafts — switchable in the UI
+
+## Requirements
+
+- **Node.js 18+** (for the local proxy server)
+- An OpenRouter account **or** a Google AI Studio account (or both)
 
 ---
 
 ## Setup
 
-### 1. Configure your Gemini API key
-
-Copy the example config file and add your key:
+### 1. Install dependencies
 
 ```bash
-cp js/config.example.js js/config.js
+npm install
+npm install @openrouter/sdk
 ```
 
-Then open `js/config.js` and replace the placeholder:
+### 2. Configure your API keys
 
-```js
-export const GEMINI_API_KEY = 'your-key-here';
-```
+Copy the example env file:
 
-Get a free key from [Google AI Studio](https://aistudio.google.com/app/apikey).
-
-> `js/config.js` is gitignored — it will never be committed.
-
-### 2. Open with a local server
-
-#### 2.1 **Using VS Code Live Server:**
-1. Install the [Live Server extension](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer)
-2. Right-click `app.html` → **Open with Live Server**
-
-#### 2.2 **Using Python (Optional):**
 ```bash
-python -m http.server 8000
-# then open http://localhost:8000/app.html
+cp .env.example .env
+```
+
+Then open `.env` and fill in the values you need:
+
+```env
+# Get a free key at: https://aistudio.google.com/app/apikey
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Get a free key at: https://openrouter.ai/workspaces/default/keys
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+```
+
+### 3. Start the server
+
+```bash
+node server.js
+```
+
+You will see:
+
+```
+VLM Annotator running at http://localhost:8000
 ```
 
 ---
@@ -81,13 +93,22 @@ Each CSV has four columns:
 
 ---
 
+## Models used
+
+| Provider | Model | Notes |
+|---|---|---|
+| Google Gemini | [Gemini models](https://ai.google.dev/gemini-api/docs/pricing) | Free tier available |
+| OpenRouter | [OpenRouter models](https://openrouter.ai/models) | Free tier available |
+
+---
+
 ## Keyboard shortcuts
 
 | Key | Action |
 |---|---|
 | `←` / `↑` | Previous image |
 | `→` / `↓` | Next image |
-| `Ctrl+S` / `Cmd+S` | Save current image |
+| `Ctrl+S` | Save current image |
 
 ---
 
@@ -95,4 +116,3 @@ Each CSV has four columns:
 
 - Annotations auto-save when navigating between images
 - Switching splits (train/valid/test) preserves all unsaved changes
-- The tool runs entirely in the browser — no backend, no data leaves your machine

@@ -28,7 +28,7 @@
 <!-- MAIN -->
 <div class="main">
 
-  <!-- LEFT: IMAGE + THUMBNAIL -->
+  <!-- LEFT: IMAGE + AI PANEL + THUMBNAIL -->
   <div class="left-panel">
     <div class="image-toolbar">
       <button class="nav-btn" id="btnPrev" onclick="navigate(-1)" disabled>prev</button>
@@ -42,21 +42,62 @@
       </div>
       <canvas id="imgCanvas" style="display:none;"></canvas>
     </div>
+
+    <!-- ── AI ASSIST PANEL ─────────────────────────────────────────────────── -->
+    <div id="aiPanel" class="ai-panel">
+
+      <!-- Header: title + provider tabs + active model label -->
+      <div class="ai-panel-header">
+        <span class="ai-panel-icon">✦</span>
+        <span class="ai-panel-title">ai assist</span>
+
+        <!-- Provider toggle tabs -->
+        <div id="aiProviderTabs" class="ai-provider-tabs">
+          <!-- Populated by aiPanel.js -->
+        </div>
+
+        <span class="ai-panel-model" id="aiModelLabel">—</span>
+      </div>
+
+      <!-- Body: observation textarea + action buttons -->
+      <div class="ai-panel-body">
+        <textarea
+          id="aiObservation"
+          class="field-input ai-observation"
+          placeholder="describe what you see — e.g. transverse fracture mid-shaft femur, moderate displacement, no comminution..."
+        ></textarea>
+
+        <div class="ai-actions">
+          <button class="ai-generate-btn" id="aiGenerateBtn" onclick="window.aiGenerate()">
+            <span id="aiBtnText">generate</span>
+            <span id="aiBtnSpinner" class="ai-spinner hidden">⟳</span>
+          </button>
+          <button class="ai-clear-btn" onclick="window.aiClear()" title="Clear all task fields">
+            clear
+          </button>
+        </div>
+      </div>
+
+      <!-- Status line -->
+      <div class="ai-status ai-status-dim" id="aiStatus"></div>
+
+    </div>
+    <!-- ── /AI ASSIST PANEL ────────────────────────────────────────────────── -->
+
     <div class="thumb-strip" id="thumbStrip"></div>
   </div>
 
-  <!-- RIGHT: AI PANEL + TASK EDITOR -->
+  <!-- RIGHT: TASK EDITOR -->
   <div class="right-panel">
     <div class="right-header">
       <span class="right-header-title">task annotations</span>
       <button class="save-btn" id="saveBtn" onclick="saveCurrentImage()" disabled>save</button>
     </div>
 
-    <!-- AI panel is injected here by aiPanel.js -->
-
     <div class="tasks-scroll" id="tasksScroll">
-      <!-- Task cards injected here -->
+      <!-- Task cards injected by annotations.js -->
     </div>
+
     <div class="status-bar">
       <div class="status-dot" id="statusDot" style="background:var(--text-muted)"></div>
       <span class="status-msg" id="statusMsg">ready — load a dataset to begin</span>

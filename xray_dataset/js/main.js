@@ -11,7 +11,6 @@ import { navigate } from './navigation.js';
 import { initAIPanel } from './aiPanel.js';
 
 // ── Expose to inline HTML handlers ───────────────────────────────────────────
-// (onclick="..." attributes in app.html need these on window)
 
 window.showLoadModal     = showLoadModal;
 window.hideLoadModal     = hideLoadModal;
@@ -19,7 +18,7 @@ window.loadDatasetFolder = loadDatasetFolder;
 window.switchSplit       = switchSplit;
 window.navigate          = navigate;
 window.saveCurrentImage  = saveCurrentImage;
-window.handleFolderLoad  = handleFolderLoad;   // used by <input onchange>
+window.handleFolderLoad  = handleFolderLoad;
 
 // ── Init AI panel ─────────────────────────────────────────────────────────────
 
@@ -29,7 +28,7 @@ initAIPanel();
 
 document.addEventListener('keydown', async e => {
   if (e.target.tagName === 'TEXTAREA') return;
-  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')    navigate(-1);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   navigate(-1);
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown')  navigate(1);
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault();
@@ -37,7 +36,7 @@ document.addEventListener('keydown', async e => {
   }
 });
 
-// ── Drag-zone hint (folder drag not supported, click only) ───────────────────
+// ── Drag-zone hint ────────────────────────────────────────────────────────────
 
 const dz = document.getElementById('dragZone');
 if (dz) {

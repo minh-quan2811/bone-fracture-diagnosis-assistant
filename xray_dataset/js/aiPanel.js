@@ -1,51 +1,50 @@
 // ─── AI PANEL ────────────────────────────────────────────────────────────────
-// Renders the Gemini prompt panel and wires up the generate action.
-// Sits above the task cards in the right panel.
+// Wires up the AI assist panel that lives in app.html.
+// HTML markup is declared statically in app.html — this module only handles
+// behaviour: provider switching, generate / clear actions, field filling.
 
-import { generateAnnotations } from './gemini.js';
-import { TASKS }               from './state.js';
+import { generateAnnotations, setActiveProvider, getActiveProvider, PROVIDERS } from './ai.js';
+import { TASKS } from './state.js';
 import { showToast, setStatus } from './ui.js';
 
-// ── Inject panel HTML ─────────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────────────────
 
 export function initAIPanel() {
-  const leftPanel  = document.querySelector('.left-panel');
-  const thumbStrip = document.getElementById('thumbStrip');
-
-  const panel = document.createElement('div');
-  panel.id        = 'aiPanel';
-  panel.className = 'ai-panel';
-  panel.innerHTML = `
-    <div class="ai-panel-header">
-      <span class="ai-panel-icon">✦</span>
-      <span class="ai-panel-title">gemini assist</span>
-      <span class="ai-panel-model">gemini-2.5-flash</span>
-    </div>
-    <div class="ai-panel-body">
-      <textarea
-        id="aiObservation"
-        class="field-input ai-observation"
-        placeholder="describe what you see — e.g. transverse fracture mid-shaft femur, moderate displacement, no comminution..."
-      ></textarea>
-      <div class="ai-actions">
-        <button class="ai-generate-btn" id="aiGenerateBtn" onclick="window.aiGenerate()">
-          <span id="aiBtnText">generate</span>
-          <span id="aiBtnSpinner" class="ai-spinner hidden">⟳</span>
-        </button>
-        <button class="ai-clear-btn" onclick="window.aiClear()" title="Clear all task fields">
-          clear
-        </button>
-      </div>
-    </div>
-    <div class="ai-status" id="aiStatus"></div>
-  `;
-
-  // Insert between image area and thumb strip
-  leftPanel.insertBefore(panel, thumbStrip);
-
-  // Wire up global handlers (called from onclick attributes)
+  _renderProviderTabs();
   window.aiGenerate = handleGenerate;
   window.aiClear    = handleClear;
+}
+
+// ── Provider tabs ─────────────────────────────────────────────────────────────
+
+function _renderProviderTabs() {
+  const container = document.getElementById('aiProviderTabs');
+  if (!container) return;
+
+  Object.values(PROVIDERS).forEach(p => {
+    const btn = document.createElement('button');
+    btn.className   = 'ai-provider-tab' + (p.id === getActiveProvider() ? ' active' : '');
+    btn.textContent = p.label;
+    btn.dataset.provider = p.id;
+    btn.onclick = () => _switchProvider(p.id);
+    container.appendChild(btn);
+  });
+
+  _updateModelLabel();
+}
+
+function _switchProvider(id) {
+  setActiveProvider(id);
+  document.querySelectorAll('.ai-provider-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.provider === id);
+  });
+  _updateModelLabel();
+  setAIStatus('provider: ' + PROVIDERS[id].label, 'dim');
+}
+
+function _updateModelLabel() {
+  const el = document.getElementById('aiModelLabel');
+  if (el) el.textContent = PROVIDERS[getActiveProvider()].model;
 }
 
 // ── Generate handler ──────────────────────────────────────────────────────────
@@ -58,7 +57,7 @@ async function handleGenerate() {
   }
 
   setLoading(true);
-  setAIStatus('calling gemini...', 'dim');
+  setAIStatus(`calling ${PROVIDERS[getActiveProvider()].label}...`, 'dim');
 
   try {
     const result = await generateAnnotations(obs);
@@ -66,14 +65,12 @@ async function handleGenerate() {
     setAIStatus('✓ fields populated — review & save', 'ok');
     showToast('annotations generated', 'success');
 
-    // Mark dirty so nav auto-saves
     const { state } = await import('./state.js');
     state.dirty = true;
-
   } catch (err) {
-    console.error('Gemini error:', err);
+    console.error('AI error:', err);
     setAIStatus(err.message, 'error');
-    showToast('gemini error — see panel', 'error');
+    showToast('AI error — see panel', 'error');
   } finally {
     setLoading(false);
   }
@@ -85,11 +82,8 @@ function handleClear() {
   TASKS.forEach(task => {
     const q = document.getElementById('q-' + task.key);
     const a = document.getElementById('a-' + task.key);
-    if (q) q.value = '';
-    if (a) a.value = '';
-    // Trigger badge update
-    q?.dispatchEvent(new Event('input'));
-    a?.dispatchEvent(new Event('input'));
+    if (q) { q.value = ''; q.dispatchEvent(new Event('input')); }
+    if (a) { a.value = ''; a.dispatchEvent(new Event('input')); }
   });
   setAIStatus('fields cleared', 'dim');
 }
@@ -97,26 +91,15 @@ function handleClear() {
 // ── Fill task fields ──────────────────────────────────────────────────────────
 
 function fillTaskFields(result) {
-  // Map Gemini keys → task keys (they already match: vqa, report, rationale)
-  const keyMap = { vqa: 'vqa', report: 'report', rationale: 'rationale' };
-
-  for (const [geminiKey, taskKey] of Object.entries(keyMap)) {
-    const data = result[geminiKey];
+  for (const taskKey of ['vqa', 'report', 'rationale']) {
+    const data = result[taskKey];
     if (!data) continue;
 
     const qEl = document.getElementById('q-' + taskKey);
     const aEl = document.getElementById('a-' + taskKey);
 
-    if (qEl) {
-      qEl.value = data.question || '';
-      qEl.dispatchEvent(new Event('input')); // triggers badge + dirty
-      animateField(qEl);
-    }
-    if (aEl) {
-      aEl.value = data.answer || '';
-      aEl.dispatchEvent(new Event('input'));
-      animateField(aEl);
-    }
+    if (qEl) { qEl.value = data.question || ''; qEl.dispatchEvent(new Event('input')); animateField(qEl); }
+    if (aEl) { aEl.value = data.answer   || ''; aEl.dispatchEvent(new Event('input')); animateField(aEl); }
   }
 }
 
@@ -127,8 +110,8 @@ function setLoading(on) {
   const text    = document.getElementById('aiBtnText');
   const spinner = document.getElementById('aiBtnSpinner');
   if (!btn) return;
-  btn.disabled       = on;
-  text.textContent   = on ? 'generating...' : 'generate annotations';
+  btn.disabled     = on;
+  text.textContent = on ? 'generating...' : 'generate';
   spinner?.classList.toggle('hidden', !on);
 }
 
@@ -141,7 +124,6 @@ function setAIStatus(msg, level = 'dim') {
 
 function animateField(el) {
   el.classList.remove('ai-filled');
-  // Force reflow
   void el.offsetWidth;
   el.classList.add('ai-filled');
 }
