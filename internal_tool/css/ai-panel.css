@@ -64,15 +64,147 @@
   white-space: nowrap;
 }
 
-.ai-provider-tab:hover {
-  opacity: 0.85;
+.ai-provider-tab:hover  { opacity: 0.85; }
+.ai-provider-tab.active { background: #a855f7; color: #fff; opacity: 1; }
+
+/* ── VQA type selector row ────────────────────────────────────────────────── */
+
+.ai-type-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
 }
 
-.ai-provider-tab.active {
-  background: #a855f7;
-  color: #fff;
-  opacity: 1;
+.ai-type-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
+
+.ai-type-pills {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+  flex: 1;
+}
+
+.type-pill {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.type-pill input[type="checkbox"] {
+  display: none;
+}
+
+.type-pill span {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.type-pill:hover span {
+  border-color: #a855f7;
+  color: #a855f7;
+}
+
+.type-pill input:checked + span {
+  background: #a855f7;
+  border-color: #a855f7;
+  color: #fff;
+}
+
+/* Disabled state — when 2 already selected and this one isn't */
+.type-pill.disabled span {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Polarity toggle button ───────────────────────────────────────────────── */
+
+.polarity-toggle {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+}
+
+.polarity-toggle:hover {
+  border-color: #a855f7;
+  background: rgba(168, 85, 247, 0.1);
+}
+
+/* Positive polarity (+) */
+.polarity-toggle[data-polarity="positive"] {
+  color: #10b981;
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.polarity-toggle[data-polarity="positive"]:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #059669;
+}
+
+/* Negative polarity (−) */
+.polarity-toggle[data-polarity="negative"] {
+  color: #ef4444;
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.polarity-toggle[data-polarity="negative"]:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #dc2626;
+}
+
+.ai-type-hint {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 28px;
+  text-align: right;
+}
+
+.ai-type-hint.warn { color: var(--warn); }
+.ai-type-hint.ok   { color: var(--accent); }
 
 /* Body — horizontal layout to save vertical space */
 .ai-panel-body {
@@ -102,7 +234,7 @@
   outline: none;
 }
 
-/* Right column: button + status stacked */
+/* Right column: button + clear stacked */
 .ai-actions {
   display: flex;
   flex-direction: column;
@@ -127,14 +259,8 @@
   white-space: nowrap;
 }
 
-.ai-generate-btn:hover:not(:disabled) {
-  background: #9333ea;
-}
-
-.ai-generate-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.ai-generate-btn:hover:not(:disabled) { background: #9333ea; }
+.ai-generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .ai-clear-btn {
   font-family: 'IBM Plex Mono', monospace;
@@ -161,9 +287,7 @@
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* Status line */
 .ai-status {
@@ -185,6 +309,28 @@
   100% { background: var(--surface2); border-color: var(--border); }
 }
 
-.field-input.ai-filled {
-  animation: aiFill 0.8s ease forwards;
+.field-input.ai-filled { animation: aiFill 0.8s ease forwards; }
+
+/* ── Question type select (inside task cards) ─────────────────────────────── */
+
+.type-select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+.type-select:focus {
+  outline: none;
+  border-color: var(--task-color);
 }

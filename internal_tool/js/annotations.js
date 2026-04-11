@@ -9,16 +9,29 @@ import { saveCSVFile } from './csv.js';
 
 export function renderTaskCards(fname) {
   const existing = state.csvData[fname] || {};
-  const scroll = document.getElementById('tasksScroll');
+  const scroll   = document.getElementById('tasksScroll');
   scroll.innerHTML = '';
 
   TASKS.forEach(task => {
-    const data   = existing[task.key] || { q: '', a: '' };
+    const data   = existing[task.key] || { q: '', a: '', question_type: '' };
     const filled = !!(data.q || data.a);
 
     const card = document.createElement('div');
     card.className = 'task-card';
     card.style.setProperty('--task-color', task.color);
+
+    // question_type selector row — only for vqa tasks
+    const typeRow = task.hasType ? `
+      <div class="field-label">question type</div>
+      <select class="field-input type-select" id="type-${task.key}">
+        <option value="">— select type —</option>
+        <option value="presence"       ${data.question_type === 'presence'       ? 'selected' : ''}>presence</option>
+        <option value="location"       ${data.question_type === 'location'       ? 'selected' : ''}>location</option>
+        <option value="classification" ${data.question_type === 'classification' ? 'selected' : ''}>classification</option>
+        <option value="characteristic" ${data.question_type === 'characteristic' ? 'selected' : ''}>characteristic</option>
+      </select>
+    ` : '';
+
     card.innerHTML = `
       <div class="task-header" data-task-key="${task.key}">
         <div class="task-dot"></div>
@@ -27,30 +40,38 @@ export function renderTaskCards(fname) {
         <div class="task-toggle">▾</div>
       </div>
       <div class="task-body" id="body-${task.key}">
+        ${typeRow}
         <div class="field-label">question</div>
         <textarea class="field-input q-input" id="q-${task.key}" placeholder="${task.defaultQ}">${data.q || ''}</textarea>
         <div class="field-label">answer</div>
         <textarea class="field-input a-input" id="a-${task.key}" placeholder="type the answer here...">${data.a || ''}</textarea>
       </div>
     `;
+
     scroll.appendChild(card);
 
-    // Toggle expand/collapse on header click
+    // Toggle expand/collapse
     const header = card.querySelector('.task-header');
     header.addEventListener('click', () => {
-      const body = card.querySelector('.task-body');
+      const body   = card.querySelector('.task-body');
       const toggle = header.querySelector('.task-toggle');
       body.classList.toggle('expanded');
       toggle.textContent = body.classList.contains('expanded') ? '▾' : '▸';
     });
 
-    // Track input and update dirty state
+    // Track dirty state on textarea input
     card.querySelectorAll('textarea').forEach(ta => {
       ta.addEventListener('input', () => {
         state.dirty = true;
         updateBadge(task.key);
       });
     });
+
+    // Track dirty state on select change
+    if (task.hasType) {
+      const sel = card.querySelector(`#type-${task.key}`);
+      if (sel) sel.addEventListener('change', () => { state.dirty = true; });
+    }
   });
 }
 
@@ -76,15 +97,20 @@ export async function saveCurrentImage(silent = false) {
 
   let anyFilled = false;
   TASKS.forEach(task => {
-    const q = (document.getElementById('q-' + task.key)?.value || '').trim();
-    const a = (document.getElementById('a-' + task.key)?.value || '').trim();
+    const q    = (document.getElementById('q-'    + task.key)?.value || '').trim();
+    const a    = (document.getElementById('a-'    + task.key)?.value || '').trim();
+    const type = task.hasType
+      ? (document.getElementById('type-' + task.key)?.value || '').trim()
+      : '';
+
     if (q || a) {
-      state.csvData[fname][task.key] = { q, a };
+      state.csvData[fname][task.key] = { q, a, question_type: type };
       anyFilled = true;
     } else {
       delete state.csvData[fname][task.key];
     }
   });
+
   if (!Object.keys(state.csvData[fname]).length) delete state.csvData[fname];
 
   state.dirty = false;
@@ -97,8 +123,8 @@ export async function saveCurrentImage(silent = false) {
 // ── Thumbnail count update ────────────────────────────────────────────────────
 
 export function updateThumbCount(index, fname) {
-  const tasks    = state.csvData[fname] ? Object.keys(state.csvData[fname]).length : 0;
-  const thumb    = document.querySelector('.thumb[data-index="' + index + '"]');
-  const el       = thumb?.querySelector('.thumb-task-count');
+  const tasks = state.csvData[fname] ? Object.keys(state.csvData[fname]).length : 0;
+  const thumb = document.querySelector('.thumb[data-index="' + index + '"]');
+  const el    = thumb?.querySelector('.thumb-task-count');
   if (el) el.textContent = `${tasks}/3`;
 }
