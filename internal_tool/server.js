@@ -22,7 +22,7 @@ function loadEnv(filePath) {
       if (eqIdx === -1) continue;
       const key = trimmed.slice(0, eqIdx).trim();
       const val = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, '');
-      if (!(key in process.env)) process.env[key] = val;   // don't override shell env
+      if (!(key in process.env)) process.env[key] = val;
     }
   } catch {
     console.warn('⚠  No .env file found — keys will be empty strings.');

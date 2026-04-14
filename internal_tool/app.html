@@ -46,14 +46,28 @@
     <!-- ── AI ASSIST PANEL ─────────────────────────────────────────────────── -->
     <div id="aiPanel" class="ai-panel">
 
-      <!-- Row 1: title + provider tabs + model label -->
+      <!-- Row 1: title + provider tabs + model selector + key toggle -->
       <div class="ai-panel-header">
         <span class="ai-panel-icon">✦</span>
         <span class="ai-panel-title">ai assist</span>
         <div id="aiProviderTabs" class="ai-provider-tabs">
           <!-- Populated by aiPanel.js -->
         </div>
-        <span class="ai-panel-model" id="aiModelLabel">—</span>
+        <select id="aiModelSelect" class="ai-model-select">
+          <!-- Populated by aiPanel.js -->
+        </select>
+        <button id="aiKeyToggle" class="ai-key-toggle" title="Use custom API key">key</button>
+      </div>
+
+      <!-- Row 1.5: Custom API key input (collapsed by default) -->
+      <div id="aiKeyRow" class="ai-key-row hidden">
+        <input 
+          type="password" 
+          id="aiCustomKey" 
+          class="ai-custom-key" 
+          placeholder="Enter custom API key (optional)"
+        >
+        <button class="ai-key-clear" onclick="window.aiClearCustomKey()" title="Clear and use .env key">reset</button>
       </div>
 
       <!-- Row 2: VQA type selector with polarity controls -->

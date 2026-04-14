@@ -1,7 +1,16 @@
 // ─── AI PANEL ────────────────────────────────────────────────────────────────
 // Wires up the AI assist panel declared in app.html.
 
-import { generateAnnotations, setActiveProvider, getActiveProvider, PROVIDERS } from './ai.js';
+import { 
+  generateAnnotations, 
+  setActiveProvider, 
+  getActiveProvider, 
+  PROVIDERS,
+  getSelectedModel,
+  setSelectedModel,
+  getCustomKey,
+  setCustomKey
+} from './ai.js';
 import { TASKS } from './state.js';
 import { showToast } from './ui.js';
 
@@ -9,9 +18,12 @@ import { showToast } from './ui.js';
 
 export function initAIPanel() {
   _renderProviderTabs();
+  _renderModelSelect();
+  _initKeyToggle();
   _initTypePills();
-  window.aiGenerate = handleGenerate;
-  window.aiClear    = handleClear;
+  window.aiGenerate       = handleGenerate;
+  window.aiClear          = handleClear;
+  window.aiClearCustomKey = handleClearCustomKey;
 }
 
 // ── Provider tabs ─────────────────────────────────────────────────────────────
@@ -28,8 +40,6 @@ function _renderProviderTabs() {
     btn.onclick          = () => _switchProvider(p.id);
     container.appendChild(btn);
   });
-
-  _updateModelLabel();
 }
 
 function _switchProvider(id) {
@@ -37,13 +47,111 @@ function _switchProvider(id) {
   document.querySelectorAll('.ai-provider-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.provider === id);
   });
-  _updateModelLabel();
+  _renderModelSelect();
+  _updateKeyToggleState();
   setAIStatus('provider: ' + PROVIDERS[id].label, 'dim');
 }
 
-function _updateModelLabel() {
-  const el = document.getElementById('aiModelLabel');
-  if (el) el.textContent = PROVIDERS[getActiveProvider()].model;
+// ── Model selector ────────────────────────────────────────────────────────────
+
+function _renderModelSelect() {
+  const select = document.getElementById('aiModelSelect');
+  if (!select) return;
+
+  const provider = PROVIDERS[getActiveProvider()];
+  const currentModel = getSelectedModel();
+
+  // Clear and populate options
+  select.innerHTML = '';
+  provider.models.forEach(model => {
+    const option = document.createElement('option');
+    option.value = model.id;
+    option.textContent = model.label;
+    select.appendChild(option);
+  });
+
+  // Set current selection
+  select.value = currentModel;
+
+  // Add change listener
+  select.onchange = () => {
+    setSelectedModel(getActiveProvider(), select.value);
+    setAIStatus(`model: ${select.options[select.selectedIndex].text}`, 'dim');
+  };
+}
+
+// ── API Key toggle ────────────────────────────────────────────────────────────
+
+function _initKeyToggle() {
+  const toggle = document.getElementById('aiKeyToggle');
+  const keyRow = document.getElementById('aiKeyRow');
+  const keyInput = document.getElementById('aiCustomKey');
+
+  if (!toggle || !keyRow || !keyInput) return;
+
+  // Load saved custom key
+  const savedKey = getCustomKey();
+  if (savedKey) {
+    keyInput.value = savedKey;
+    keyRow.classList.remove('hidden');
+    toggle.classList.add('active');
+  }
+
+  // Toggle visibility
+  toggle.onclick = () => {
+    const isHidden = keyRow.classList.contains('hidden');
+    keyRow.classList.toggle('hidden');
+    toggle.classList.toggle('active');
+    
+    if (isHidden) {
+      keyInput.focus();
+    }
+  };
+
+  // Save key on input
+  keyInput.oninput = () => {
+    const value = keyInput.value.trim();
+    setCustomKey(getActiveProvider(), value);
+    _updateKeyToggleState();
+  };
+
+  _updateKeyToggleState();
+}
+
+function _updateKeyToggleState() {
+  const toggle = document.getElementById('aiKeyToggle');
+  const keyInput = document.getElementById('aiCustomKey');
+  if (!toggle || !keyInput) return;
+
+  // Load key for current provider
+  const savedKey = getCustomKey();
+  keyInput.value = savedKey || '';
+  
+  // Update toggle appearance
+  const hasCustomKey = savedKey && savedKey.length > 0;
+  toggle.classList.toggle('active', hasCustomKey);
+  
+  // Update status hint
+  if (hasCustomKey) {
+    setAIStatus('using custom API key', 'dim');
+  }
+}
+
+function handleClearCustomKey() {
+  const keyInput = document.getElementById('aiCustomKey');
+  const keyRow = document.getElementById('aiKeyRow');
+  const toggle = document.getElementById('aiKeyToggle');
+  
+  if (!keyInput) return;
+  
+  keyInput.value = '';
+  setCustomKey(getActiveProvider(), null);
+  
+  if (keyRow) keyRow.classList.add('hidden');
+  if (toggle) toggle.classList.remove('active');
+  
+  setAIStatus('using .env API key', 'dim');
+  showToast('custom key cleared', 'success');
 }
 
 // ── Type pill selector with polarity controls ─────────────────────────────────
@@ -162,8 +270,12 @@ async function handleGenerate() {
   }
 
   setLoading(true);
+  const provider = PROVIDERS[getActiveProvider()];
+  const modelSelect = document.getElementById('aiModelSelect');
+  const modelLabel = modelSelect ? modelSelect.options[modelSelect.selectedIndex].text : provider.label;
   const polarityDesc = typeConfigs.map(c => `${c.type}(${c.polarity.charAt(0)})`).join(', ');
-  setAIStatus(`calling ${PROVIDERS[getActiveProvider()].label}... [${polarityDesc}]`, 'dim');
+  
+  setAIStatus(`calling ${modelLabel}... [${polarityDesc}]`, 'dim');
 
   try {
     const result = await generateAnnotations(obs, typeConfigs);

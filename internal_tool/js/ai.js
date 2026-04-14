@@ -1,23 +1,104 @@
 // ─── AI CLIENT ───────────────────────────────────────────────────────────────
 // Unified provider layer: supports Gemini and OpenRouter.
 // Keys are fetched once from /api/config (served by server.js from .env).
+import { sampleTemplates, sampleNegativeOption } from './template.js';
 
 export const PROVIDERS = {
   gemini: {
-    id:    'gemini',
-    label: 'Gemini',
-    model: 'gemini-2.5-flash-lite',  // gemini-2.5-flash  gemini-2.5-flash-lite
+    id:     'gemini',
+    label:  'Gemini',
+    models: [
+      { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+      { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+    ],
   },
   openrouter: {
-    id:    'openrouter',
-    label: 'OpenRouter',
-    model: 'nvidia/nemotron-3-super-120b-a12b:free',
+    id:     'openrouter',
+    label:  'OpenRouter',
+    models: [
+      { id: 'nvidia/nemotron-3-super-120b-a12b:free', label: 'Nvidia Nemotron 3 (Free)' },
+    ],
   },
 };
 
+// ── State management ──────────────────────────────────────────────────────────
+
 let _activeProvider = 'gemini';
+let _selectedModels  = {
+  gemini:     PROVIDERS.gemini.models[0].id,      // Default to first model
+  openrouter: PROVIDERS.openrouter.models[0].id,
+};
+let _customKeys = {
+  gemini:     null,
+  openrouter: null,
+};
+
+// Load from localStorage
+const STORAGE_KEY_PROVIDER = 'ai_provider';
+const STORAGE_KEY_MODELS   = 'ai_models';
+const STORAGE_KEY_KEYS     = 'ai_custom_keys';
+
+function _loadFromStorage() {
+  try {
+    const savedProvider = localStorage.getItem(STORAGE_KEY_PROVIDER);
+    if (savedProvider && PROVIDERS[savedProvider]) {
+      _activeProvider = savedProvider;
+    }
+
+    const savedModels = localStorage.getItem(STORAGE_KEY_MODELS);
+    if (savedModels) {
+      const parsed = JSON.parse(savedModels);
+      Object.keys(parsed).forEach(provider => {
+        if (PROVIDERS[provider]) _selectedModels[provider] = parsed[provider];
+      });
+    }
+
+    const savedKeys = localStorage.getItem(STORAGE_KEY_KEYS);
+    if (savedKeys) {
+      _customKeys = JSON.parse(savedKeys);
+    }
+  } catch (err) {
+    console.warn('Failed to load AI settings from localStorage:', err);
+  }
+}
+
+function _saveToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY_PROVIDER, _activeProvider);
+    localStorage.setItem(STORAGE_KEY_MODELS, JSON.stringify(_selectedModels));
+    localStorage.setItem(STORAGE_KEY_KEYS, JSON.stringify(_customKeys));
+  } catch (err) {
+    console.warn('Failed to save AI settings to localStorage:', err);
+  }
+}
+
+_loadFromStorage();
+
 export function getActiveProvider()   { return _activeProvider; }
-export function setActiveProvider(id) { _activeProvider = id; }
+export function setActiveProvider(id) { 
+  _activeProvider = id; 
+  _saveToStorage();
+}
+
+export function getSelectedModel(providerId = null) {
+  const provider = providerId || _activeProvider;
+  return _selectedModels[provider];
+}
+
+export function setSelectedModel(providerId, modelId) {
+  _selectedModels[providerId] = modelId;
+  _saveToStorage();
+}
+
+export function getCustomKey(providerId = null) {
+  const provider = providerId || _activeProvider;
+  return _customKeys[provider];
+}
+
+export function setCustomKey(providerId, key) {
+  _customKeys[providerId] = key || null;
+  _saveToStorage();
+}
 
 // ── Key cache ─────────────────────────────────────────────────────────────────
 
@@ -38,60 +119,63 @@ const TYPE_DEFINITIONS = {
     // SLAKE: Abnormal
     def: 'Asks whether a finding or abnormality exists in the image (e.g. "Is there a fracture in this image?", "Is there evidence of a fracture?", "Does this image show any abnormality?").',
     answer: 'Answer "yes" or "no" only — nothing else.',
-    negativeStrategy: `Ask about a finding or abnormality that is NOT present in the user's description. Choose from:
-      - bone condition (healthy bone)
-      - joint issue
-      - soft tissue abnormality
-      - foreign object or prior surgery
-    Ensure the correct answer is "no" based on what the user described.`,
+    negativeStrategy: `Ask about a finding that is NOT present in the observation. 
+    Pick ONE from this list that contradicts what the user described:
+      {absence_options}
+    
+    SELECTION RULES:
+      - Never pick a type that matches or closely resembles the actual finding.
+      - If the observation describes a healthy bone, do NOT pick "healthy bone".
+      - Ensure the correct answer is "no" based on what the user described.`,
   },
 
   location: {
     // SLAKE: Position, Organ
     def: `Asks either:
-  - WHERE a finding is spatially located in the image (e.g. "Where is the fracture located?", "At what level does the fracture occur?", "Is the fracture in the upper or lower part of the image?")
-  - WHICH bone or anatomical structure is visible (e.g. "Which bone is shown in this image?", "What anatomical structure is visible in this image?")`,
-    answer: 'For yes/no questions, answer "no" or "yes". For open questions, answer with the actual location/structure from the description as concisely as possible. No period.',
-    negativeStrategy: `Ask about a location or anatomical structure that is DIFFERENT from what the user described. Strategies:
-      - different region
-      - different part of the bone
-      - different side
-      - different bone or structure
-    For yes/no questions, answer "no". The answer should name the actual location/structure from the description, contradicting the question.`,
+    - WHERE a finding is spatially located in the image (e.g. "Where is the fracture located?", "At what level does the fracture occur?")
+    - WHICH bone or anatomical structure is visible (e.g. "Which bone is shown in this image?", "What anatomical structure is visible in this image?")`,
+    answer: 'For yes/no questions, answer "yes". For open questions, answer with the actual location/structure from the description as concisely as possible. No period.',
+    negativeStrategy: `Ask about a location or anatomical structure that is DIFFERENT from what the user described.
+      Freely pick ANY wrong location from this list:
+      {location_options}
+
+      SELECTION RULES:
+        - Never pick a location that matches or partially matches the actual finding.
+        - For yes/no questions, the answer is "no". For open questions, answer with the actual location from the observation.`,
   },
 
   classification: {
     // SLAKE: (no subcategory — single type)
     def: 'Asks what type, pattern, or category a finding belongs to (e.g. "What type of fracture is this?", "How would you classify this fracture?", "Is this a comminuted fracture?").',
-    answer: 'For yes/no questions, answer answer "no" or "yes". For open questions, answer with the actual classification from the description as concisely as possible. No period. ',
-    negativeStrategy: `Ask about a classification type that is INCORRECT based on the description. Strategies:
-      - fracture pattern
-      - complexity
-      - mechanism
-      - stability
+    answer: 'For yes/no questions, answer "no" or "yes". For open questions, answer with the actual classification from the description as concisely as possible. No period.',
+    negativeStrategy: `Ask about a classification type that is INCORRECT based on the description.
+    Pick ONE from this list that contradicts what the user described:
+      {classification_options}
+    
+    SELECTION RULES:
+      - Never pick a type that matches or closely resembles the actual finding.
+      - If the observation describes a transverse fracture, do NOT pick "transverse fracture" or "transverse displaced fracture".
+      - If the observation describes a healthy bone, do NOT pick "healthy bone".
+      - Ensure the correct answer is "no" based on what the user described.
     For yes/no questions, answer "no".`,
   },
 
   characteristic: {
-        // SLAKE: KG, Shape, Abnormal (feature-specific)
-        def: `Asks about a specific feature of a finding. Choose ONLY ONE of these three subcategories per entry:
+    // SLAKE: KG, Shape, Abnormal (feature-specific)
+    def: `Asks about a specific feature of a finding. Choose ONLY ONE of these subcategories per entry:
       - CLINICAL KNOWLEDGE: general facts about the fracture type (e.g. cause, mechanism, complications)
-      - FRAGMENT FEATURE: a particular attribute visible in the image related to fragment position, alignment, rotational orientation, or bone length change.
+      - FRAGMENT FEATURE: a visible attribute in the image related to fragment position, alignment, rotational orientation, or bone length change.
       
       Do not combine subcategories — each question must belong to exactly one.`,
-        answer: 'For yes/no questions, answer "yes" or "no" only. Otherwise answer only what is asked, as concisely as possible. No period.',
-        negativeStrategy: `For negative answers, use ONLY FRAGMENT FEATURE subcategories (NEVER CLINICAL KNOWLEDGE).
+    answer: 'For yes/no questions, answer "yes" or "no" only. Otherwise answer only what is asked, as concisely as possible. No period.',
+    negativeStrategy: `Use ONLY FRAGMENT FEATURE subcategory (NEVER CLINICAL KNOWLEDGE).
+      Identify one structural feature present in the observation, then ask about its opposite condition.
+      {characteristic_options}
 
-      FRAGMENT FEATURE negative strategy:
-      - Identify one structural feature (alignment, displacement, fragments, cortex).
-      - Replace it with its opposite condition:
-        - displaced ↔ aligned
-        - angulated ↔ normal alignment
-        - fragmented ↔ single piece
-        - disrupted cortex ↔ intact cortex
-      
-      Answer "no" for yes/no questions. For open questions, answer with the actual feature from the description.`,
-      },
+      SELECTION RULES:
+        - Ask about the OPPOSITE term — that becomes the wrong feature in the question.
+        - For yes/no questions, answer "no".`,
+  },
 };
 
 /**
@@ -106,16 +190,46 @@ function _buildPrompt(typeConfigs) {
     const def = TYPE_DEFINITIONS[config.type];
     const num = idx + 1;
     
-    let instruction = `${num}. "${config.type}" (${config.polarity} answer):\n`;
-    instruction += `   Definition: ${def.def}\n`;
+  const samples = sampleTemplates(config.type, config.polarity, 4);
+  const templateBlock = samples.length > 0
+    ? `   EXAMPLE PHRASINGS (use these as style references, adapt to the actual finding):\n`
+      + samples.map(t => `   - "${t}"`).join('\n') + '\n'
+    : '';
+
+  let instruction = `${num}. "${config.type}" (${config.polarity} answer):\n`;
+  instruction += `   Definition: ${def.def}\n`;
+
+  if (config.polarity === 'negative') {
+    let strategyText = def.negativeStrategy;
     
-    if (config.polarity === 'negative') {
-      instruction += `   NEGATIVE STRATEGY: ${def.negativeStrategy}\n`;
-      instruction += `   ${def.answer}`;
-    } else {
-      instruction += `   POSITIVE STRATEGY: Ask about features that ARE present in the description.\n`;
-      instruction += `   ${def.answer}`;
+    // Inject randomly sampled options into the strategy
+    if (config.type === 'presence' && strategyText.includes('{absence_options}')) {
+      const sampledOptions = sampleNegativeOption('presence', 4);
+      const optionsList = sampledOptions.map(opt => `      - ${opt}`).join('\n');
+      strategyText = strategyText.replace('{absence_options}', optionsList);
+    } else if (config.type === 'location' && strategyText.includes('{location_options}')) {
+      const sampledLocations = sampleNegativeOption('location', 5);
+      const locationList = sampledLocations.join(', ');
+      strategyText = strategyText.replace('{location_options}', `\n      ${locationList}\n      `);
+    } else if (config.type === 'classification' && strategyText.includes('{classification_options}')) {
+      const sampledClassifications = sampleNegativeOption('classification', 5);
+      const classificationList = sampledClassifications.map(c => `      - ${c}`).join('\n');
+      strategyText = strategyText.replace('{classification_options}', classificationList);
+    } else if (config.type === 'characteristic' && strategyText.includes('{characteristic_options}')) {
+      const sampledPairs = sampleNegativeOption('characteristic', 4);
+      if (sampledPairs && sampledPairs.length > 0) {
+        const pairsText = `Pick ONE opposite pair from this list:\n        ${sampledPairs.map(p => `${p.property}: ${p.correct} ↔ ${p.opposite}`).join('\n        ')}`;
+        strategyText = strategyText.replace('{characteristic_options}', pairsText);
+      }
     }
+    
+    instruction += `   NEGATIVE STRATEGY: ${strategyText}\n`;
+    instruction += templateBlock;
+  } else {
+    instruction += `   POSITIVE STRATEGY: Ask about features that ARE present in the description.\n`;
+    instruction += templateBlock;
+    instruction += `   ${def.answer}`;
+  }
     
     return instruction;
   }).join('\n\n');
@@ -150,8 +264,6 @@ ${instructions}
 
 QUESTION PHRASING:
 - Reference "the image" or "this image" — NEVER name the specific anatomy or body part.
-- For "characteristic" questions, pick ONE subcategory (CLINICAL KNOWLEDGE, SHAPE/GEOMETRY,
-  or FEATURE-SPECIFIC) and stay within it.
 - Vary phrasing and subcategory selection across entries.
 - MUST base the answers only on what the user describes.
 
@@ -186,9 +298,11 @@ export async function generateAnnotations(observation, typeConfigs) {
   const prompt = _buildPrompt(typeConfigs);
 
   if (_activeProvider === 'gemini') {
-    return _callGemini(observation, config.GEMINI_API_KEY, prompt, typeConfigs);
+    const apiKey = _customKeys.gemini || config.GEMINI_API_KEY;
+    return _callGemini(observation, apiKey, prompt, typeConfigs);
   } else if (_activeProvider === 'openrouter') {
-    return _callOpenRouter(observation, config.OPENROUTER_API_KEY, prompt, typeConfigs);
+    const apiKey = _customKeys.openrouter || config.OPENROUTER_API_KEY;
+    return _callOpenRouter(observation, apiKey, prompt, typeConfigs);
   }
   throw new Error(`Unknown provider: ${_activeProvider}`);
 }
@@ -197,10 +311,10 @@ export async function generateAnnotations(observation, typeConfigs) {
 
 async function _callGemini(observation, key, prompt, typeConfigs) {
   if (!key || key === 'YOUR_GEMINI_API_KEY_HERE') {
-    throw new Error('GEMINI_API_KEY is not set in your .env file.');
+    throw new Error('GEMINI_API_KEY is not set. Please add it to .env or provide a custom key.');
   }
 
-  const model  = PROVIDERS.gemini.model;
+  const model  = getSelectedModel('gemini');
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
   const res = await fetch(`${apiUrl}?key=${key}`, {
@@ -236,8 +350,10 @@ async function _callGemini(observation, key, prompt, typeConfigs) {
 
 async function _callOpenRouter(observation, key, prompt, typeConfigs) {
   if (!key || key === 'YOUR_OPENROUTER_API_KEY_HERE') {
-    throw new Error('OPENROUTER_API_KEY is not set in your .env file.');
+    throw new Error('OPENROUTER_API_KEY is not set. Please add it to .env or provide a custom key.');
   }
+
+  const model = getSelectedModel('openrouter');
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method:  'POST',
@@ -248,7 +364,7 @@ async function _callOpenRouter(observation, key, prompt, typeConfigs) {
       'X-Title':       'VLM Annotator',
     },
     body: JSON.stringify({
-      model:       PROVIDERS.openrouter.model,
+      model:       model,
       temperature: 0.3,
       max_tokens:  1024,
       messages: [
