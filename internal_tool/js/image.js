@@ -11,6 +11,12 @@ export async function loadImage(index) {
   state.currentIndex = index;
   updateCounters(state.imageFiles, state.currentIndex);
 
+  // Always clear stale generated VQA when switching images.
+  // This is the key guard: _collectFromDOM() in saveCurrentImage reads
+  // window._generatedVQA, so if it's left over from a previous image it
+  // will corrupt the newly-loaded image's data.
+  window._generatedVQA = null;
+
   const file = state.imageFiles[index];
   document.getElementById('imgFilename').textContent    = file.name;
   document.getElementById('saveBtn').disabled           = false;

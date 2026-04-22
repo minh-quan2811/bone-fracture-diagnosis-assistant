@@ -28,6 +28,8 @@ initAIPanel();
 
 document.addEventListener('keydown', async e => {
   if (e.target.tagName === 'TEXTAREA') return;
+  // Block keyboard navigation while AI generation is in progress
+  if (window._aiGenerating) return;
   if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   navigate(-1);
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown')  navigate(1);
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {

@@ -1,6 +1,4 @@
 // ─── AI CLIENT ───────────────────────────────────────────────────────────────
-// Unified provider layer: supports Gemini and OpenRouter.
-// Keys are fetched once from /api/config (served by server.js from .env).
 import { sampleTemplates, sampleNegativeOption } from './template.js';
 
 export const PROVIDERS = {
@@ -8,8 +6,9 @@ export const PROVIDERS = {
     id:     'gemini',
     label:  'Gemini',
     models: [
-      { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+      { id: 'gemini-2.5-flash',      label: 'Gemini 2.5 Flash' },
       { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+      {id: 'gemini-3.1-flash-lite-preview' , label: 'Gemini 3.1 Flash Lite' },
     ],
   },
   openrouter: {
@@ -21,299 +20,244 @@ export const PROVIDERS = {
   },
 };
 
-// ── State management ──────────────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────────────────────
 
-let _activeProvider = 'gemini';
+let _activeProvider  = 'gemini';
 let _selectedModels  = {
-  gemini:     PROVIDERS.gemini.models[0].id,      // Default to first model
+  gemini:     PROVIDERS.gemini.models[0].id,
   openrouter: PROVIDERS.openrouter.models[0].id,
 };
-let _customKeys = {
-  gemini:     null,
-  openrouter: null,
-};
+let _customKeys = { gemini: null, openrouter: null };
 
-// Load from localStorage
 const STORAGE_KEY_PROVIDER = 'ai_provider';
 const STORAGE_KEY_MODELS   = 'ai_models';
 const STORAGE_KEY_KEYS     = 'ai_custom_keys';
 
 function _loadFromStorage() {
   try {
-    const savedProvider = localStorage.getItem(STORAGE_KEY_PROVIDER);
-    if (savedProvider && PROVIDERS[savedProvider]) {
-      _activeProvider = savedProvider;
-    }
-
-    const savedModels = localStorage.getItem(STORAGE_KEY_MODELS);
-    if (savedModels) {
-      const parsed = JSON.parse(savedModels);
-      Object.keys(parsed).forEach(provider => {
-        if (PROVIDERS[provider]) _selectedModels[provider] = parsed[provider];
-      });
-    }
-
-    const savedKeys = localStorage.getItem(STORAGE_KEY_KEYS);
-    if (savedKeys) {
-      _customKeys = JSON.parse(savedKeys);
-    }
-  } catch (err) {
-    console.warn('Failed to load AI settings from localStorage:', err);
-  }
+    const p = localStorage.getItem(STORAGE_KEY_PROVIDER);
+    if (p && PROVIDERS[p]) _activeProvider = p;
+    const m = localStorage.getItem(STORAGE_KEY_MODELS);
+    if (m) Object.assign(_selectedModels, JSON.parse(m));
+    const k = localStorage.getItem(STORAGE_KEY_KEYS);
+    if (k) _customKeys = JSON.parse(k);
+  } catch {}
 }
 
 function _saveToStorage() {
   try {
     localStorage.setItem(STORAGE_KEY_PROVIDER, _activeProvider);
-    localStorage.setItem(STORAGE_KEY_MODELS, JSON.stringify(_selectedModels));
-    localStorage.setItem(STORAGE_KEY_KEYS, JSON.stringify(_customKeys));
-  } catch (err) {
-    console.warn('Failed to save AI settings to localStorage:', err);
-  }
+    localStorage.setItem(STORAGE_KEY_MODELS,   JSON.stringify(_selectedModels));
+    localStorage.setItem(STORAGE_KEY_KEYS,     JSON.stringify(_customKeys));
+  } catch {}
 }
 
 _loadFromStorage();
 
-export function getActiveProvider()   { return _activeProvider; }
-export function setActiveProvider(id) { 
-  _activeProvider = id; 
-  _saveToStorage();
-}
+export function getActiveProvider()         { return _activeProvider; }
+export function setActiveProvider(id)       { _activeProvider = id; _saveToStorage(); }
+export function getSelectedModel(p = null)  { return _selectedModels[p || _activeProvider]; }
+export function setSelectedModel(p, id)     { _selectedModels[p] = id; _saveToStorage(); }
+export function getCustomKey(p = null)      { return _customKeys[p || _activeProvider]; }
+export function setCustomKey(p, key)        { _customKeys[p] = key || null; _saveToStorage(); }
 
-export function getSelectedModel(providerId = null) {
-  const provider = providerId || _activeProvider;
-  return _selectedModels[provider];
-}
-
-export function setSelectedModel(providerId, modelId) {
-  _selectedModels[providerId] = modelId;
-  _saveToStorage();
-}
-
-export function getCustomKey(providerId = null) {
-  const provider = providerId || _activeProvider;
-  return _customKeys[provider];
-}
-
-export function setCustomKey(providerId, key) {
-  _customKeys[providerId] = key || null;
-  _saveToStorage();
-}
-
-// ── Key cache ─────────────────────────────────────────────────────────────────
+// ── Config cache ──────────────────────────────────────────────────────────────
 
 let _config = null;
-
 async function _getConfig() {
   if (_config) return _config;
   const res = await fetch('/api/config');
-  if (!res.ok) throw new Error('Could not load config from server. Is server.js running?');
+  if (!res.ok) throw new Error('Could not load config. Is server.js running?');
   _config = await res.json();
   return _config;
 }
 
-// ── Prompt builder ────────────────────────────────────────────────────────────
+// ── Type definitions (compact) ────────────────────────────────────────────────
 
-const TYPE_DEFINITIONS = {
+export const ALL_TYPES = [
+  'modality', 'presence', 'location', 'classification',
+  'anatomy', 'knowledge', 'characteristic', 'plane',
+];
+
+const TYPE_DEF = {
+  modality: {
+    def: 'What imaging modality produced this image (X-ray, MRI, CT, ultrasound, etc.). Answer: modality name or yes/no.',
+    negStrategy: `Ask whether a WRONG modality was used. Pick from: {options}. Answer must be "no".`,
+  },
   presence: {
-    // SLAKE: Abnormal
-    def: 'Asks whether a finding or abnormality exists in the image (e.g. "Is there a fracture in this image?", "Is there evidence of a fracture?", "Does this image show any abnormality?").',
-    answer: 'Answer "yes" or "no" only — nothing else.',
-    negativeStrategy: `Ask about a finding that is NOT present in the observation. 
-    Pick ONE from this list that contradicts what the user described:
-      {absence_options}
-    
-    SELECTION RULES:
-      - Never pick a type that matches or closely resembles the actual finding.
-      - If the observation describes a healthy bone, do NOT pick "healthy bone".
-      - Ensure the correct answer is "no" based on what the user described.`,
+    def: 'Whether a fracture or abnormality exists. Answer: yes/no only.',
+    negStrategy: `Ask about a finding NOT present or NOT healthy bone. Pick from: {options}. Answer must be "no".`,
   },
-
   location: {
-    // SLAKE: Position, Organ
-    def: `Asks either:
-    - WHERE a finding is spatially located in the image (e.g. "Where is the fracture located?", "At what level does the fracture occur?")
-    - WHICH bone or anatomical structure is visible (e.g. "Which bone is shown in this image?", "What anatomical structure is visible in this image?")`,
-    answer: 'For yes/no questions, answer "yes". For open questions, answer with the actual location/structure from the description as concisely as possible. No period.',
-    negativeStrategy: `Ask about a location or anatomical structure that is DIFFERENT from what the user described.
-      Freely pick ANY wrong location from this list:
-      {location_options}
-
-      SELECTION RULES:
-        - Never pick a location that matches or partially matches the actual finding.
-        - For yes/no questions, the answer is "no". For open questions, answer with the actual location from the observation.`,
+    def: 'WHERE the fracture occurs (bone segment, side, region). Answer: location name or yes/no.',
+    negStrategy: `Ask about a WRONG location/structure. Pick from: {options}. Yes/no answer: "no"; open: actual location.`,
   },
-
   classification: {
-    // SLAKE: (no subcategory — single type)
-    def: 'Asks what type, pattern, or category a finding belongs to (e.g. "What type of fracture is this?", "How would you classify this fracture?", "Is this a comminuted fracture?").',
-    answer: 'For yes/no questions, answer "no" or "yes". For open questions, answer with the actual classification from the description as concisely as possible. No period.',
-    negativeStrategy: `Ask about a classification type that is INCORRECT based on the description.
-    Pick ONE from this list that contradicts what the user described:
-      {classification_options}
-    
-    SELECTION RULES:
-      - Never pick a type that matches or closely resembles the actual finding.
-      - If the observation describes a transverse fracture, do NOT pick "transverse fracture" or "transverse displaced fracture".
-      - If the observation describes a healthy bone, do NOT pick "healthy bone".
-      - Ensure the correct answer is "no" based on what the user described.
-    For yes/no questions, answer "no".`,
+    def: 'What fracture TYPE or PATTERN (transverse, oblique, comminuted, etc.). Answer: type name or yes/no.',
+    negStrategy: `Ask about an INCORRECT fracture type. Pick from: {options}. Yes/no answer: "no"; open: actual type.`,
   },
-
+  anatomy: {
+    def: 'Which bone or body part is shown in the image. Answer: bone/body part name or yes/no.',
+    negStrategy: `Ask whether a WRONG bone or body part is shown. Pick from: {options}. Answer must be "no".`,
+  },
+  knowledge: {
+    def: `Clinical knowledge about the structure or injury — choose ONE subcategory:
+- FUNCTION/SYSTEM: the bone's function or body system
+- CAUSE/MECHANISM: common mechanism or cause of the injury type, how it typically occurs
+- TREATMENT: typical management or treatment approach
+- COMPLICATION: known complications, risks, or adverse outcomes
+- PREVENTION: preventive measures or strategies to avoid injury
+- HEALING/PROGNOSIS: expected healing time, recovery period, or outcome
+- ASSOCIATED STRUCTURES: structures commonly injured along with this fracture`,
+    negStrategy: `Ask about an INCORRECT clinical fact. Pick one: {options}
+Format the question so the answer is "no" (yes/no question).`,
+  },
   characteristic: {
-    // SLAKE: KG, Shape, Abnormal (feature-specific)
-    def: `Asks about a specific feature of a finding. Choose ONLY ONE of these subcategories per entry:
-      - CLINICAL KNOWLEDGE: general facts about the fracture type (e.g. cause, mechanism, complications)
-      - FRAGMENT FEATURE: a visible attribute in the image related to fragment position, alignment, rotational orientation, or bone length change.
-      
-      Do not combine subcategories — each question must belong to exactly one.`,
-    answer: 'For yes/no questions, answer "yes" or "no" only. Otherwise answer only what is asked, as concisely as possible. No period.',
-    negativeStrategy: `Use ONLY FRAGMENT FEATURE subcategory (NEVER CLINICAL KNOWLEDGE).
-      Identify one structural feature present in the observation, then ask about its opposite condition.
-      {characteristic_options}
-
-      SELECTION RULES:
-        - Ask about the OPPOSITE term — that becomes the wrong feature in the question.
-        - For yes/no questions, answer "no".`,
+    def: `A visible structural feature of the fracture — choose ONE:
+- DISPLACEMENT: displaced vs non-displaced
+- ALIGNMENT: angulated vs anatomically aligned
+- FRAGMENTS: comminuted vs simple
+- CORTEX: disrupted vs intact
+- POSITION: overriding vs end-to-end apposition
+- ROTATION: rotationally deformed vs normal
+- LENGTH: shortened vs normal`,
+    negStrategy: `Ask about the OPPOSITE feature. Pick one pair: {options}
+Answer must be "no".`,
+  },
+  plane: {
+    def: 'What radiographic view or projection was used (AP, PA, lateral, oblique, axial, etc.). Answer: view name or yes/no.',
+    negStrategy: `Ask whether a WRONG projection was used. Pick from: {options}. Answer must be "no".`,
   },
 };
 
+// ── Prompt builder ────────────────────────────────────────────────────────────
+
 /**
- * Build the dynamic prompt based on selected types and their polarities.
- * @param {Array} typeConfigs - Array of {type: string, polarity: 'positive'|'negative'}
+ * Build generation plan:
+ * - 2 user-selected types → 1 pair each (with chosen polarity)
+ * - randomly pick 4–6 from the remaining 6 types → 1 pair each (polarity: 65% positive, 35% negative)
+ * Total: 6–8 pairs
+ * @param {Array<{type,polarity}>} primaryConfigs  - 2 user-selected types
+ * @returns {Array<{type,polarity,count}>}
  */
-function _buildPrompt(typeConfigs) {
-  const [config1, config2] = typeConfigs;
+function _buildPlan(primaryConfigs) {
+  const primaryTypes   = primaryConfigs.map(c => c.type);
+  const secondaryTypes = ALL_TYPES.filter(t => !primaryTypes.includes(t));
 
-  // Build instructions for each VQA entry
-  const instructions = typeConfigs.map((config, idx) => {
-    const def = TYPE_DEFINITIONS[config.type];
-    const num = idx + 1;
-    
-  const samples = sampleTemplates(config.type, config.polarity, 4);
-  const templateBlock = samples.length > 0
-    ? `   EXAMPLE PHRASINGS (use these as style references, adapt to the actual finding):\n`
-      + samples.map(t => `   - "${t}"`).join('\n') + '\n'
-    : '';
-
-  let instruction = `${num}. "${config.type}" (${config.polarity} answer):\n`;
-  instruction += `   Definition: ${def.def}\n`;
-
-  if (config.polarity === 'negative') {
-    let strategyText = def.negativeStrategy;
-    
-    // Inject randomly sampled options into the strategy
-    if (config.type === 'presence' && strategyText.includes('{absence_options}')) {
-      const sampledOptions = sampleNegativeOption('presence', 4);
-      const optionsList = sampledOptions.map(opt => `      - ${opt}`).join('\n');
-      strategyText = strategyText.replace('{absence_options}', optionsList);
-    } else if (config.type === 'location' && strategyText.includes('{location_options}')) {
-      const sampledLocations = sampleNegativeOption('location', 5);
-      const locationList = sampledLocations.join(', ');
-      strategyText = strategyText.replace('{location_options}', `\n      ${locationList}\n      `);
-    } else if (config.type === 'classification' && strategyText.includes('{classification_options}')) {
-      const sampledClassifications = sampleNegativeOption('classification', 5);
-      const classificationList = sampledClassifications.map(c => `      - ${c}`).join('\n');
-      strategyText = strategyText.replace('{classification_options}', classificationList);
-    } else if (config.type === 'characteristic' && strategyText.includes('{characteristic_options}')) {
-      const sampledPairs = sampleNegativeOption('characteristic', 4);
-      if (sampledPairs && sampledPairs.length > 0) {
-        const pairsText = `Pick ONE opposite pair from this list:\n        ${sampledPairs.map(p => `${p.property}: ${p.correct} ↔ ${p.opposite}`).join('\n        ')}`;
-        strategyText = strategyText.replace('{characteristic_options}', pairsText);
-      }
-    }
-    
-    instruction += `   NEGATIVE STRATEGY: ${strategyText}\n`;
-    instruction += templateBlock;
-  } else {
-    instruction += `   POSITIVE STRATEGY: Ask about features that ARE present in the description.\n`;
-    instruction += templateBlock;
-    instruction += `   ${def.answer}`;
+  // Shuffle secondary types (Fisher-Yates)
+  for (let i = secondaryTypes.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [secondaryTypes[i], secondaryTypes[j]] = [secondaryTypes[j], secondaryTypes[i]];
   }
-    
-    return instruction;
-  }).join('\n\n');
+
+  // Pick 4–6 at random
+  const secondaryCount = 4 + Math.floor(Math.random() * 3); // 4, 5, or 6
+  const picked = secondaryTypes.slice(0, secondaryCount);
+
+  // Weighted polarity: 70% positive, 30% negative
+  const randomPolarity = () => Math.random() < 0.7 ? 'positive' : 'negative';
+
+  const plan = [
+    ...primaryConfigs.map(c => ({ ...c, count: 1 })),
+    ...picked.map(t => ({ type: t, polarity: randomPolarity(), count: 1 })),
+  ];
+  return plan;
+}
+
+function _buildTypeInstruction(type, polarity, count) {
+  const def = TYPE_DEF[type];
+  let body = `Definition: ${def.def}\n`;
+
+  if (polarity === 'negative') {
+    let strategy = def.negStrategy;
+    if (type === 'characteristic') {
+      const pairs = sampleNegativeOption('characteristic', 3);
+      strategy = strategy.replace('{options}', pairs.map(p => `${p.property}: ${p.correct} ↔ ${p.opposite}`).join('; '));
+    } else if (type === 'knowledge') {
+      const opts = sampleNegativeOption('knowledge', 4);
+      strategy = strategy.replace('{options}', opts.map(o => `${o.category}: "${o.value}"`).join(', '));
+    } else {
+      const opts = sampleNegativeOption(type, 4);
+      strategy = strategy.replace('{options}', opts.join(', '));
+    }
+    body += `Negative strategy: ${strategy}\n`;
+  }
+
+  const samples = sampleTemplates(type, polarity, 3);
+  if (samples.length) body += `Example phrasings: ${samples.map(s => `"${s}"`).join(' | ')}\n`;
+
+  return `- type="${type}" polarity="${polarity}" → generate ${count} entr${count > 1 ? 'ies' : 'y'}\n${body}`;
+}
+
+function _buildPrompt(plan) {
+  const typeInstructions = plan
+    .map(p => _buildTypeInstruction(p.type, p.polarity, p.count))
+    .join('\n');
+
+  const total = plan.reduce((s, p) => s + p.count, 0);
 
   return `You are a radiologist assistant creating VQA training data from X-ray/MRI descriptions.
 
-Generate 2 VQA entries and 1 report based on the user's X-ray/MRI observation. Return only valid JSON:
+Generate exactly ${total} VQA entries. Return ONLY valid JSON (no markdown):
 
 {
   "vqa": [
     {
       "question": "...",
       "answer": "...",
-      "question_type": "${config1.type}",
-      "polarity": "${config1.polarity}"
-    },
-    {
-      "question": "...",
-      "answer": "...",
-      "question_type": "${config2.type}",
-      "polarity": "${config2.polarity}"
+      "answer_type": "open" | "closed",
+      "question_type": "modality|presence|location|classification|anatomy|knowledge|characteristic|plane",
+      "polarity": "positive|negative"
     }
-  ],
-  "report": {
-    "question": "Generate a radiology report for this image.",
-    "answer": "..."
-  }
+  ]
 }
 
-VQA RULES:
-${instructions}
+FIELD RULES:
+- answer_type: "closed" if question expects yes/no, else "open"
+- answer: max 5 words; for closed=yes/no only; for open=concise value; multiple findings separated by comma
+- question: always reference "the image" or "this image" — never name the body part explicitly
+- base all answers strictly on the user's observation
 
-QUESTION PHRASING:
-- Reference "the image" or "this image" — NEVER name the specific anatomy or body part.
-- Vary phrasing and subcategory selection across entries.
-- MUST base the answers only on what the user describes.
+ENTRIES TO GENERATE (in this order):
+${typeInstructions}
 
-POLARITY ENFORCEMENT:
-- POSITIVE polarity: Ask about features that ARE in the description. Answer should confirm presence/truth.
-- NEGATIVE polarity: Follow the NEGATIVE STRATEGY for that type. Answer should deny/contradict the question.
-
-IMPORTANT RULES:
-- Never ask the same question twice with different polarities.
-- Vary the absent/wrong features across entries when using negative polarity.
-- For "characteristic" with negative polarity, NEVER use CLINICAL KNOWLEDGE subcategory.
-- Answer with max 2 words, if have multiple findings, separate it by comma
-
-REPORT FORMAT:
-Generate a structured radiology report with two sections continuously flowing from one to the next:
-- FINDINGS: 2-3 sentences describing the fracture or abnormality in clinical detail using professional radiological language
-- IMPRESSION: state the diagnosis concisely`;
+CONSTRAINTS:
+- No duplicate questions across entries
+- Vary phrasing and subcategory selection across entries of the same type`;
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
 /**
- * @param {string} observation - What the user observed in the X-ray
- * @param {Array} typeConfigs - Array of {type: string, polarity: 'positive'|'negative'}
+ * @param {string} observation
+ * @param {Array<{type,polarity}>} primaryConfigs - exactly 2 user-selected configs
+ * @returns {Promise<{vqa: Array}>}
  */
-export async function generateAnnotations(observation, typeConfigs) {
-  if (!typeConfigs || typeConfigs.length !== 2) {
-    throw new Error('Exactly 2 VQA type configurations must be provided.');
+export async function generateAnnotations(observation, primaryConfigs) {
+  if (!primaryConfigs || primaryConfigs.length !== 2) {
+    throw new Error('Exactly 2 primary VQA type configurations must be provided.');
   }
 
+  const plan   = _buildPlan(primaryConfigs);
+  const prompt = _buildPrompt(plan);
   const config = await _getConfig();
-  const prompt = _buildPrompt(typeConfigs);
 
   if (_activeProvider === 'gemini') {
-    const apiKey = _customKeys.gemini || config.GEMINI_API_KEY;
-    return _callGemini(observation, apiKey, prompt, typeConfigs);
+    const key = _customKeys.gemini || config.GEMINI_API_KEY;
+    return _callGemini(observation, key, prompt, plan);
   } else if (_activeProvider === 'openrouter') {
-    const apiKey = _customKeys.openrouter || config.OPENROUTER_API_KEY;
-    return _callOpenRouter(observation, apiKey, prompt, typeConfigs);
+    const key = _customKeys.openrouter || config.OPENROUTER_API_KEY;
+    return _callOpenRouter(observation, key, prompt, plan);
   }
   throw new Error(`Unknown provider: ${_activeProvider}`);
 }
 
 // ── Gemini ────────────────────────────────────────────────────────────────────
 
-async function _callGemini(observation, key, prompt, typeConfigs) {
+async function _callGemini(observation, key, prompt, plan) {
   if (!key || key === 'YOUR_GEMINI_API_KEY_HERE') {
-    throw new Error('GEMINI_API_KEY is not set. Please add it to .env or provide a custom key.');
+    throw new Error('GEMINI_API_KEY is not set. Add it to .env or provide a custom key.');
   }
-
   const model  = getSelectedModel('gemini');
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
@@ -322,13 +266,10 @@ async function _callGemini(observation, key, prompt, typeConfigs) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       system_instruction: { parts: [{ text: prompt }] },
-      contents: [{
-        role:  'user',
-        parts: [{ text: `X-ray observation: ${observation.trim()}` }],
-      }],
+      contents: [{ role: 'user', parts: [{ text: `X-ray observation: ${observation.trim()}` }] }],
       generationConfig: {
         temperature:      0.3,
-        maxOutputTokens:  1024,
+        maxOutputTokens:  1500,
         responseMimeType: 'application/json',
       },
     }),
@@ -338,21 +279,18 @@ async function _callGemini(observation, key, prompt, typeConfigs) {
     const err = await res.json().catch(() => ({}));
     throw new Error(`Gemini API error: ${err?.error?.message || `HTTP ${res.status}`}`);
   }
-
   const data = await res.json();
   const raw  = data?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!raw) throw new Error('Empty response from Gemini.');
-
-  return _parseAndValidate(raw, typeConfigs);
+  return _parseAndValidate(raw, plan);
 }
 
 // ── OpenRouter ────────────────────────────────────────────────────────────────
 
-async function _callOpenRouter(observation, key, prompt, typeConfigs) {
+async function _callOpenRouter(observation, key, prompt, plan) {
   if (!key || key === 'YOUR_OPENROUTER_API_KEY_HERE') {
-    throw new Error('OPENROUTER_API_KEY is not set. Please add it to .env or provide a custom key.');
+    throw new Error('OPENROUTER_API_KEY is not set. Add it to .env or provide a custom key.');
   }
-
   const model = getSelectedModel('openrouter');
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -364,12 +302,12 @@ async function _callOpenRouter(observation, key, prompt, typeConfigs) {
       'X-Title':       'VLM Annotator',
     },
     body: JSON.stringify({
-      model:       model,
+      model,
       temperature: 0.3,
-      max_tokens:  1024,
+      max_tokens:  1500,
       messages: [
-        { role: 'system', content: prompt },
-        { role: 'user',   content: `X-ray observation: ${observation.trim()}` },
+        { role: 'system',  content: prompt },
+        { role: 'user',    content: `X-ray observation: ${observation.trim()}` },
       ],
     }),
   });
@@ -378,43 +316,38 @@ async function _callOpenRouter(observation, key, prompt, typeConfigs) {
     const err = await res.json().catch(() => ({}));
     throw new Error(`OpenRouter API error: ${err?.error?.message || `HTTP ${res.status}`}`);
   }
-
   const data = await res.json();
   const raw  = data?.choices?.[0]?.message?.content;
   if (!raw) throw new Error('Empty response from OpenRouter.');
-
-  return _parseAndValidate(raw, typeConfigs);
+  return _parseAndValidate(raw, plan);
 }
 
 // ── Parser + validator ────────────────────────────────────────────────────────
 
-function _parseAndValidate(raw, typeConfigs) {
+function _parseAndValidate(raw, plan) {
   const clean = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
 
   let parsed;
-  try {
-    parsed = JSON.parse(clean);
-  } catch {
-    throw new Error('Model returned invalid JSON. Try again.');
+  try { parsed = JSON.parse(clean); }
+  catch { throw new Error('Model returned invalid JSON. Try again.'); }
+
+  if (!Array.isArray(parsed.vqa) || parsed.vqa.length === 0) {
+    throw new Error('"vqa" must be a non-empty array.');
   }
 
-  if (!Array.isArray(parsed.vqa) || parsed.vqa.length !== 2) {
-    throw new Error('"vqa" must be an array of exactly 2 entries.');
-  }
+  // Enforce plan-specified types and polarities in order
+  const flatPlan = plan.flatMap(p => Array(p.count).fill({ type: p.type, polarity: p.polarity }));
+  parsed.vqa = parsed.vqa.slice(0, flatPlan.length).map((entry, i) => ({
+    ...entry,
+    question_type: flatPlan[i]?.type     || entry.question_type,
+    polarity:      flatPlan[i]?.polarity || entry.polarity || 'positive',
+    answer_type:   entry.answer_type || 'open',
+  }));
 
   for (const [i, entry] of parsed.vqa.entries()) {
-    if (!entry.question || !entry.answer || !entry.question_type) {
-      throw new Error(`vqa[${i}] is missing question, answer, or question_type.`);
+    if (!entry.question || !entry.answer) {
+      throw new Error(`vqa[${i}] is missing question or answer.`);
     }
-    // Ensure the model respected the requested types and polarities
-    if (typeConfigs) {
-      entry.question_type = typeConfigs[i].type;
-      entry.polarity = typeConfigs[i].polarity;
-    }
-  }
-
-  if (!parsed.report?.question || !parsed.report?.answer) {
-    throw new Error('Model response missing "report" field.');
   }
 
   return parsed;

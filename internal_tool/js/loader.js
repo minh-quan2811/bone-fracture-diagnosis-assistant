@@ -1,6 +1,4 @@
 // ─── FOLDER LOADER ───────────────────────────────────────────────────────────
-// Handles folder picking, directory traversal, and CSV file bootstrapping.
-
 import { state } from './state.js';
 import { showToast, setStatus, hideLoadModal } from './ui.js';
 import { loadCSV } from './csv.js';
@@ -20,10 +18,7 @@ export async function loadDatasetFolder() {
     const files = [];
     await traverseFolder(folderHandle, '', files);
 
-    if (!files.length) {
-      showToast('no files found in folder', 'warn');
-      return;
-    }
+    if (!files.length) { showToast('no files found in folder', 'warn'); return; }
 
     await ensureCSVFilesExist();
     hideLoadModal();
@@ -43,17 +38,15 @@ async function traverseFolder(folderHandle, path, files, currentSplit = null) {
     for await (const [name, handle] of folderHandle.entries()) {
       const fullPath = path ? path + '/' + name : name;
       let nextSplit = currentSplit;
-
       if (handle.kind === 'file') {
         const file = await handle.getFile();
         state.allFilePaths[file.name] = file.name;
         if (nextSplit) state.fileSplits[file.name] = nextSplit;
         files.push(file);
       } else if (handle.kind === 'directory') {
-        if (name === 'train' || name === 'valid' || name === 'test') {
+        if (['train', 'valid', 'test'].includes(name)) {
           state.splitFolderHandles[name] = handle;
           nextSplit = name;
-          console.log('Found split folder:', name);
         }
         await traverseFolder(handle, fullPath, files, nextSplit);
       }
@@ -65,31 +58,27 @@ async function traverseFolder(folderHandle, path, files, currentSplit = null) {
 
 // ── CSV bootstrap ─────────────────────────────────────────────────────────────
 
+// New 7-column header
+const CSV_HEADER = 'image_path,task_type,polarity,question_type,answer_type,question,answer\n';
+
 async function ensureCSVFilesExist() {
-  const csvHeader = 'image_path,task_type,question,answer\n';
-  const splits = ['train', 'valid', 'test'];
-
-  for (const split of splits) {
+  for (const split of ['train', 'valid', 'test']) {
     if (!state.splitFolderHandles[split]) continue;
-
     const splitFolder = state.splitFolderHandles[split];
     const fileName    = split + '_annotations.csv';
-
     try {
       const csvHandle = await splitFolder.getFileHandle(fileName);
       state.csvFileHandles[split] = csvHandle;
-      console.log(`Found existing ${fileName}`);
     } catch (err) {
       if (err.name === 'NotFoundError') {
         try {
           const newHandle = await splitFolder.getFileHandle(fileName, { create: true });
           const writable  = await newHandle.createWritable();
-          await writable.write(csvHeader);
+          await writable.write(CSV_HEADER);
           await writable.close();
           state.csvFileHandles[split] = newHandle;
-          console.log(`Created new ${fileName}`);
-        } catch (createErr) {
-          console.error(`Failed to create ${fileName}:`, createErr);
+        } catch (e) {
+          console.error(`Failed to create ${fileName}:`, e);
         }
       }
     }
@@ -100,27 +89,21 @@ async function ensureCSVFilesExist() {
 
 export async function handleFolderLoad(files) {
   state.allFiles = Array.from(files);
-  console.log('Total files loaded:', state.allFiles.length);
   setStatus('parsing folder structure...', 'dim');
-
   state.classNames = await extractClasses(state.allFiles);
   state.splitLoaded = {};
   await switchSplit(state.split);
-
   showToast('dataset loaded & CSVs ready', 'success');
 }
 
 // ── Class extraction ──────────────────────────────────────────────────────────
 
 async function extractClasses(files) {
-  // Try data.yaml / data.yml
   const yaml = files.find(f => f.name === 'data.yaml' || f.name === 'data.yml');
   if (yaml) {
-    const text = await readText(yaml);
+    const text  = await _readText(yaml);
     const match = text.match(/names\s*:\s*\[([^\]]+)\]/);
     if (match) return match[1].split(',').map(s => s.trim().replace(/['"]/g, ''));
-
-    // Block-list style
     const lines = text.split('\n');
     const idx   = lines.findIndex(l => l.trim().startsWith('names:'));
     if (idx !== -1) {
@@ -133,20 +116,15 @@ async function extractClasses(files) {
       if (classes.length) return classes;
     }
   }
-
-  // Try classes.txt
   const clsTxt = files.find(f => f.name === 'classes.txt');
   if (clsTxt) {
-    const text = await readText(clsTxt);
+    const text = await _readText(clsTxt);
     return text.split('\n').map(s => s.trim()).filter(Boolean);
   }
-
   return ['class_0', 'class_1', 'class_2', 'class_3', 'class_4'];
 }
 
-// ── Utils ─────────────────────────────────────────────────────────────────────
-
-function readText(file) {
+function _readText(file) {
   return new Promise((res, rej) => {
     const r = new FileReader();
     r.onload = e => res(e.target.result);

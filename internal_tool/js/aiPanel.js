@@ -1,18 +1,17 @@
 // ─── AI PANEL ────────────────────────────────────────────────────────────────
-// Wires up the AI assist panel declared in app.html.
-
-import { 
-  generateAnnotations, 
-  setActiveProvider, 
-  getActiveProvider, 
+import {
+  generateAnnotations,
+  setActiveProvider,
+  getActiveProvider,
   PROVIDERS,
   getSelectedModel,
   setSelectedModel,
   getCustomKey,
-  setCustomKey
+  setCustomKey,
 } from './ai.js';
 import { TASKS } from './state.js';
 import { showToast } from './ui.js';
+import { saveCSVFile } from './csv.js';
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -24,6 +23,8 @@ export function initAIPanel() {
   window.aiGenerate       = handleGenerate;
   window.aiClear          = handleClear;
   window.aiClearCustomKey = handleClearCustomKey;
+  // Navigation lock flag — checked by navigate() and keyboard handler
+  window._aiGenerating    = false;
 }
 
 // ── Provider tabs ─────────────────────────────────────────────────────────────
@@ -31,7 +32,6 @@ export function initAIPanel() {
 function _renderProviderTabs() {
   const container = document.getElementById('aiProviderTabs');
   if (!container) return;
-
   Object.values(PROVIDERS).forEach(p => {
     const btn = document.createElement('button');
     btn.className        = 'ai-provider-tab' + (p.id === getActiveProvider() ? ' active' : '');
@@ -57,172 +57,106 @@ function _switchProvider(id) {
 function _renderModelSelect() {
   const select = document.getElementById('aiModelSelect');
   if (!select) return;
-
   const provider = PROVIDERS[getActiveProvider()];
-  const currentModel = getSelectedModel();
-
-  // Clear and populate options
   select.innerHTML = '';
-  provider.models.forEach(model => {
-    const option = document.createElement('option');
-    option.value = model.id;
-    option.textContent = model.label;
-    select.appendChild(option);
+  provider.models.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id; opt.textContent = m.label;
+    select.appendChild(opt);
   });
-
-  // Set current selection
-  select.value = currentModel;
-
-  // Add change listener
+  select.value    = getSelectedModel();
   select.onchange = () => {
     setSelectedModel(getActiveProvider(), select.value);
     setAIStatus(`model: ${select.options[select.selectedIndex].text}`, 'dim');
   };
 }
 
-// ── API Key toggle ────────────────────────────────────────────────────────────
+// ── API key toggle ────────────────────────────────────────────────────────────
 
 function _initKeyToggle() {
-  const toggle = document.getElementById('aiKeyToggle');
-  const keyRow = document.getElementById('aiKeyRow');
+  const toggle   = document.getElementById('aiKeyToggle');
+  const keyRow   = document.getElementById('aiKeyRow');
   const keyInput = document.getElementById('aiCustomKey');
-
   if (!toggle || !keyRow || !keyInput) return;
 
-  // Load saved custom key
-  const savedKey = getCustomKey();
-  if (savedKey) {
-    keyInput.value = savedKey;
-    keyRow.classList.remove('hidden');
-    toggle.classList.add('active');
-  }
+  const saved = getCustomKey();
+  if (saved) { keyInput.value = saved; keyRow.classList.remove('hidden'); toggle.classList.add('active'); }
 
-  // Toggle visibility
   toggle.onclick = () => {
-    const isHidden = keyRow.classList.contains('hidden');
     keyRow.classList.toggle('hidden');
     toggle.classList.toggle('active');
-    
-    if (isHidden) {
-      keyInput.focus();
-    }
+    if (!keyRow.classList.contains('hidden')) keyInput.focus();
   };
-
-  // Save key on input
   keyInput.oninput = () => {
-    const value = keyInput.value.trim();
-    setCustomKey(getActiveProvider(), value);
+    setCustomKey(getActiveProvider(), keyInput.value.trim());
     _updateKeyToggleState();
   };
-
   _updateKeyToggleState();
 }
 
 function _updateKeyToggleState() {
-  const toggle = document.getElementById('aiKeyToggle');
+  const toggle   = document.getElementById('aiKeyToggle');
   const keyInput = document.getElementById('aiCustomKey');
   if (!toggle || !keyInput) return;
-
-  // Load key for current provider
-  const savedKey = getCustomKey();
-  keyInput.value = savedKey || '';
-  
-  // Update toggle appearance
-  const hasCustomKey = savedKey && savedKey.length > 0;
-  toggle.classList.toggle('active', hasCustomKey);
-  
-  // Update status hint
-  if (hasCustomKey) {
-    setAIStatus('using custom API key', 'dim');
-  }
+  const saved = getCustomKey();
+  keyInput.value = saved || '';
+  toggle.classList.toggle('active', !!(saved && saved.length));
+  if (saved) setAIStatus('using custom API key', 'dim');
 }
 
 function handleClearCustomKey() {
   const keyInput = document.getElementById('aiCustomKey');
-  const keyRow = document.getElementById('aiKeyRow');
-  const toggle = document.getElementById('aiKeyToggle');
-  
+  const keyRow   = document.getElementById('aiKeyRow');
+  const toggle   = document.getElementById('aiKeyToggle');
   if (!keyInput) return;
-  
   keyInput.value = '';
   setCustomKey(getActiveProvider(), null);
-  
-  if (keyRow) keyRow.classList.add('hidden');
-  if (toggle) toggle.classList.remove('active');
-  
+  keyRow?.classList.add('hidden');
+  toggle?.classList.remove('active');
   setAIStatus('using .env API key', 'dim');
   showToast('custom key cleared', 'success');
 }
 
-// ── Type pill selector with polarity controls ─────────────────────────────────
+// ── Type pill selector ────────────────────────────────────────────────────────
 
 const MAX_SELECTED = 2;
 
 function _initTypePills() {
   const pills = document.querySelectorAll('#aiTypePills .type-pill input');
-
   pills.forEach(cb => {
-    cb.addEventListener('change', () => {
-      _enforceLimit(pills);
-      _updateHint(pills);
-    });
+    cb.addEventListener('change', () => { _enforceLimit(pills); _updateHint(pills); });
   });
-
-  // Initialize polarity toggle listeners
   document.querySelectorAll('.polarity-toggle').forEach(toggle => {
-    toggle.addEventListener('click', (e) => {
+    toggle.addEventListener('click', e => {
       const pill = e.target.closest('.type-pill');
-      const checkbox = pill.querySelector('input[type="checkbox"]');
-      
-      // Only toggle polarity if this type is selected
-      if (checkbox.checked) {
-        const currentPolarity = toggle.dataset.polarity || 'positive';
-        const newPolarity = currentPolarity === 'positive' ? 'negative' : 'positive';
-        toggle.dataset.polarity = newPolarity;
-        toggle.textContent = newPolarity === 'positive' ? '+' : '−';
-        toggle.title = `Answer polarity: ${newPolarity}`;
+      const cb   = pill.querySelector('input[type="checkbox"]');
+      if (cb.checked) {
+        const next = (toggle.dataset.polarity || 'positive') === 'positive' ? 'negative' : 'positive';
+        toggle.dataset.polarity = next;
+        toggle.textContent      = next === 'positive' ? '+' : '−';
+        toggle.title            = `Answer polarity: ${next}`;
       }
     });
   });
-
   _updateHint(pills);
 }
 
-// If a third checkbox is ticked, uncheck it immediately
 function _enforceLimit(pills) {
   const checked = [...pills].filter(cb => cb.checked);
-
   if (checked.length > MAX_SELECTED) {
-    // The most recently changed one is the extra — uncheck it
     for (const cb of pills) {
-      if (cb.checked && !cb._wasChecked) {
-        cb.checked = false;
-        break;
-      }
+      if (cb.checked && !cb._wasChecked) { cb.checked = false; break; }
     }
   }
-
-  // Store current state for next change comparison
   pills.forEach(cb => { cb._wasChecked = cb.checked; });
-
-  // Disable uncheckable pills (those not checked when limit reached)
   const nowChecked = [...pills].filter(cb => cb.checked);
   pills.forEach(cb => {
-    const pill = cb.closest('.type-pill');
-    pill.classList.toggle(
-      'disabled',
-      nowChecked.length >= MAX_SELECTED && !cb.checked
-    );
-    
-    // Show/hide polarity toggle based on selection
+    const pill   = cb.closest('.type-pill');
     const toggle = pill.querySelector('.polarity-toggle');
+    pill.classList.toggle('disabled', nowChecked.length >= MAX_SELECTED && !cb.checked);
     if (toggle) {
       toggle.style.display = cb.checked ? 'inline-flex' : 'none';
-      // Reset to positive when deselected
-      if (!cb.checked) {
-        toggle.dataset.polarity = 'positive';
-        toggle.textContent = '+';
-      }
+      if (!cb.checked) { toggle.dataset.polarity = 'positive'; toggle.textContent = '+'; }
     }
   });
 }
@@ -235,55 +169,84 @@ function _updateHint(pills) {
   hint.className   = 'ai-type-hint ' + (count === MAX_SELECTED ? 'ok' : 'warn');
 }
 
-// Returns array of {type, polarity} configs, or null if not exactly 2
 function _getSelectedTypeConfigs() {
-  const pills = document.querySelectorAll('#aiTypePills .type-pill');
   const configs = [];
-  
-  pills.forEach(pill => {
-    const checkbox = pill.querySelector('input[type="checkbox"]');
-    if (checkbox.checked) {
+  document.querySelectorAll('#aiTypePills .type-pill').forEach(pill => {
+    const cb = pill.querySelector('input[type="checkbox"]');
+    if (cb.checked) {
       const toggle = pill.querySelector('.polarity-toggle');
-      configs.push({
-        type: checkbox.value,
-        polarity: toggle?.dataset.polarity || 'positive'
-      });
+      configs.push({ type: cb.value, polarity: toggle?.dataset.polarity || 'positive' });
     }
   });
-  
   return configs.length === MAX_SELECTED ? configs : null;
+}
+
+// ── Navigation lock helpers ───────────────────────────────────────────────────
+
+function _lockNavigation() {
+  window._aiGenerating = true;
+  const prev = document.getElementById('btnPrev');
+  const next = document.getElementById('btnNext');
+  if (prev) prev.disabled = true;
+  if (next) next.disabled = true;
+}
+
+function _unlockNavigation() {
+  window._aiGenerating = false;
+  const { state } = { state: null };
+  _restoreNavButtons();
+}
+
+async function _restoreNavButtons() {
+  const { state } = await import('./state.js');
+  const prev = document.getElementById('btnPrev');
+  const next = document.getElementById('btnNext');
+  if (prev) prev.disabled = state.currentIndex === 0;
+  if (next) next.disabled = state.currentIndex === state.imageFiles.length - 1;
 }
 
 // ── Generate handler ──────────────────────────────────────────────────────────
 
 async function handleGenerate() {
   const obs = document.getElementById('aiObservation')?.value?.trim();
-  if (!obs) {
-    setAIStatus('enter an observation first', 'warn');
-    return;
-  }
+  if (!obs) { setAIStatus('enter an observation first', 'warn'); return; }
 
   const typeConfigs = _getSelectedTypeConfigs();
-  if (!typeConfigs) {
-    setAIStatus('select exactly 2 vqa types first', 'warn');
-    return;
-  }
+  if (!typeConfigs) { setAIStatus('select exactly 2 vqa types first', 'warn'); return; }
 
+  // Snapshot the current index synchronously, before any await.
+  // This is the image this generation belongs to — do not allow it to change.
+  const { state } = await import('./state.js');
+  const generationIndex = state.currentIndex;
+  const generationFname = state.imageFiles[generationIndex]?.name;
+  if (!generationFname) return;
+
+  // Lock navigation for the entire async operation
+  _lockNavigation();
   setLoading(true);
-  const provider = PROVIDERS[getActiveProvider()];
-  const modelSelect = document.getElementById('aiModelSelect');
-  const modelLabel = modelSelect ? modelSelect.options[modelSelect.selectedIndex].text : provider.label;
-  const polarityDesc = typeConfigs.map(c => `${c.type}(${c.polarity.charAt(0)})`).join(', ');
-  
+
+  const modelLabel  = (() => {
+    const sel = document.getElementById('aiModelSelect');
+    return sel ? sel.options[sel.selectedIndex].text : PROVIDERS[getActiveProvider()].label;
+  })();
+  const polarityDesc = typeConfigs.map(c => `${c.type}(${c.polarity[0]})`).join(', ');
   setAIStatus(`calling ${modelLabel}... [${polarityDesc}]`, 'dim');
 
   try {
     const result = await generateAnnotations(obs, typeConfigs);
-    fillTaskFields(result);
-    setAIStatus('✓ fields populated — review & save', 'ok');
-    showToast('annotations generated', 'success');
 
-    const { state } = await import('./state.js');
+    // Double-check we're still on the same image (belt-and-suspenders)
+    if (state.currentIndex !== generationIndex) {
+      console.warn('Image changed during generation — discarding result to prevent corruption.');
+      setAIStatus('⚠ image changed during generation — result discarded', 'warn');
+      showToast('generation discarded (image changed)', 'warn');
+      return;
+    }
+
+    await _renderVQAResults(result.vqa, generationIndex, generationFname);
+    setAIStatus(`✓ ${result.vqa.length} pairs generated — review & save`, 'ok');
+    showToast(`${result.vqa.length} VQA pairs generated`, 'success');
+
     state.dirty = true;
   } catch (err) {
     console.error('AI error:', err);
@@ -291,47 +254,129 @@ async function handleGenerate() {
     showToast('AI error — see panel', 'error');
   } finally {
     setLoading(false);
+    _lockNavigation(); // keep locked until unlock call below
+    window._aiGenerating = false;
+    await _restoreNavButtons();
   }
 }
 
 // ── Clear handler ─────────────────────────────────────────────────────────────
 
-function handleClear() {
-  TASKS.forEach(task => {
-    const q    = document.getElementById('q-'    + task.key);
-    const a    = document.getElementById('a-'    + task.key);
-    const type = document.getElementById('type-' + task.key);
-    if (q)    { q.value    = ''; q.dispatchEvent(new Event('input')); }
-    if (a)    { a.value    = ''; a.dispatchEvent(new Event('input')); }
-    if (type) { type.value = ''; }
-  });
-  setAIStatus('fields cleared', 'dim');
+async function handleClear() {
+  const container = document.getElementById('tasksScroll');
+  if (container) {
+    container.innerHTML = `
+      <div class="empty-state" style="padding:32px;text-align:center;opacity:.5;font-size:13px">
+        use ai assist panel to generate vqa pairs<br>or they will appear after generation
+      </div>`;
+  }
+  
+  // Clear generated data
+  window._generatedVQA = null;
+  
+  // Clear from CSV state AND save to file
+  const { state } = await import('./state.js');
+  const { saveCSVFile } = await import('./csv.js');
+  const { updateThumbCount } = await import('./annotations.js');
+  
+  if (state.imageFiles.length > 0) {
+    const fname = state.imageFiles[state.currentIndex].name;
+    const currentIndex = state.currentIndex;
+    
+    delete state.csvData[fname];
+    state.dirty = true;
+    await saveCSVFile();
+    
+    updateThumbCount(currentIndex, fname);
+  }
+  
+  setAIStatus('cleared and saved', 'dim');
 }
 
-// ── Fill task fields ──────────────────────────────────────────────────────────
+// ── Render VQA result cards ───────────────────────────────────────────────────
 
-function fillTaskFields(result) {
-  // vqa is an array of 2 — map index to vqa_1 / vqa_2
-  result.vqa.forEach((entry, i) => {
-    const key = 'vqa_' + (i + 1);
-    const qEl = document.getElementById('q-'    + key);
-    const aEl = document.getElementById('a-'    + key);
-    const tEl = document.getElementById('type-' + key);
-
-    if (qEl) { qEl.value = entry.question     || ''; qEl.dispatchEvent(new Event('input')); animateField(qEl); }
-    if (aEl) { aEl.value = entry.answer        || ''; aEl.dispatchEvent(new Event('input')); animateField(aEl); }
-    if (tEl) { tEl.value = entry.question_type || ''; animateField(tEl); }
-    
-    // Store polarity for reference (optional - can be used for visual indicators)
-    if (qEl) qEl.dataset.polarity = entry.polarity || 'positive';
-    if (aEl) aEl.dataset.polarity = entry.polarity || 'positive';
+async function _renderVQAResults(vqaList, generationIndex, generationFname) {
+  // Define the desired order of question types
+  const TYPE_ORDER = ['modality', 'presence', 'location', 'classification', 'anatomy', 'knowledge', 'characteristic', 'plane'];
+  
+  // Sort vqaList based on the desired order
+  const sortedVQA = [...vqaList].sort((a, b) => {
+    const indexA = TYPE_ORDER.indexOf(a.question_type);
+    const indexB = TYPE_ORDER.indexOf(b.question_type);
+    return indexA - indexB;
   });
 
-  // report
-  const qEl = document.getElementById('q-report');
-  const aEl = document.getElementById('a-report');
-  if (qEl) { qEl.value = result.report.question || ''; qEl.dispatchEvent(new Event('input')); animateField(qEl); }
-  if (aEl) { aEl.value = result.report.answer   || ''; aEl.dispatchEvent(new Event('input')); animateField(aEl); }
+  // Store on window for save access — only valid for this specific image
+  window._generatedVQA = sortedVQA;
+
+  const scroll = document.getElementById('tasksScroll');
+  scroll.innerHTML = '';
+
+  const TYPE_COLORS = {
+    modality:       '#64748b',
+    presence:       '#00d4aa',
+    location:       '#00b4d8',
+    classification: '#a855f7',
+    anatomy:        '#06b6d4',
+    knowledge:      '#ec4899',
+    characteristic: '#f59e0b',
+    plane:          '#10b981',
+  };
+
+  sortedVQA.forEach((entry, i) => {
+    const color = TYPE_COLORS[entry.question_type] || '#0099ff';
+    const card  = document.createElement('div');
+    card.className = 'task-card';
+    card.style.setProperty('--task-color', color);
+
+    const polarityLabel = entry.polarity === 'negative'
+      ? '<span style="color:var(--warn);font-size:10px;margin-left:4px">−neg</span>'
+      : '<span style="color:var(--accent);font-size:10px;margin-left:4px">+pos</span>';
+    const answerTypeLabel = `<span style="font-size:10px;opacity:.6;margin-left:4px">[${entry.answer_type || 'open'}]</span>`;
+
+    card.innerHTML = `
+      <div class="task-header" data-index="${i}" style="cursor:pointer">
+        <div class="task-dot"></div>
+        <div class="task-name">${entry.question_type}${polarityLabel}${answerTypeLabel}</div>
+        <div class="task-badge filled">filled</div>
+        <div class="task-toggle">▸</div>
+      </div>
+      <div class="task-body" id="vqa-body-${i}">
+        <div class="field-label">question</div>
+        <textarea class="field-input q-input" id="vqa-q-${i}">${entry.question}</textarea>
+        <div class="field-label">answer</div>
+        <textarea class="field-input a-input" id="vqa-a-${i}">${entry.answer}</textarea>
+      </div>
+    `;
+
+    // Collapse toggle
+    card.querySelector('.task-header').addEventListener('click', () => {
+      const body   = card.querySelector('.task-body');
+      const toggle = card.querySelector('.task-toggle');
+      body.classList.toggle('expanded');
+      toggle.textContent = body.classList.contains('expanded') ? '▾' : '▸';
+    });
+
+    // Track edits back to window._generatedVQA
+    card.querySelector(`#vqa-q-${i}`).addEventListener('input', e => {
+      window._generatedVQA[i].question = e.target.value;
+    });
+    card.querySelector(`#vqa-a-${i}`).addEventListener('input', e => {
+      window._generatedVQA[i].answer = e.target.value;
+    });
+
+    scroll.appendChild(card);
+  });
+
+  const { state } = await import('./state.js');
+  const { updateThumbCount } = await import('./annotations.js');
+  const { saveCSVFile } = await import('./csv.js');
+  
+  // Use the pinned fname — never read state.currentIndex here
+  state.csvData[generationFname] = sortedVQA;
+  state.dirty = false;
+  await saveCSVFile();
+  updateThumbCount(generationIndex, generationFname);
 }
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
@@ -346,7 +391,7 @@ function setLoading(on) {
   spinner?.classList.toggle('hidden', !on);
 }
 
-function setAIStatus(msg, level = 'dim') {
+export function setAIStatus(msg, level = 'dim') {
   const el = document.getElementById('aiStatus');
   if (!el) return;
   el.textContent = msg;

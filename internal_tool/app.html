@@ -50,50 +50,75 @@
       <div class="ai-panel-header">
         <span class="ai-panel-icon">✦</span>
         <span class="ai-panel-title">ai assist</span>
-        <div id="aiProviderTabs" class="ai-provider-tabs">
-          <!-- Populated by aiPanel.js -->
-        </div>
-        <select id="aiModelSelect" class="ai-model-select">
-          <!-- Populated by aiPanel.js -->
-        </select>
+        <div id="aiProviderTabs" class="ai-provider-tabs"></div>
+        <select id="aiModelSelect" class="ai-model-select"></select>
         <button id="aiKeyToggle" class="ai-key-toggle" title="Use custom API key">key</button>
       </div>
 
       <!-- Row 1.5: Custom API key input (collapsed by default) -->
       <div id="aiKeyRow" class="ai-key-row hidden">
-        <input 
-          type="password" 
-          id="aiCustomKey" 
-          class="ai-custom-key" 
+        <input
+          type="password"
+          id="aiCustomKey"
+          class="ai-custom-key"
           placeholder="Enter custom API key (optional)"
         >
         <button class="ai-key-clear" onclick="window.aiClearCustomKey()" title="Clear and use .env key">reset</button>
       </div>
 
-      <!-- Row 2: VQA type selector with polarity controls -->
+      <!-- Row 2: VQA type selector -->
       <div class="ai-type-row">
         <span class="ai-type-label">vqa types</span>
         <div class="ai-type-pills" id="aiTypePills">
+
+          <label class="type-pill">
+            <input type="checkbox" value="modality">
+            <span>modality</span>
+            <button class="polarity-toggle" data-polarity="positive" title="Answer polarity: positive" style="display:none;">+</button>
+          </label>
+
           <label class="type-pill">
             <input type="checkbox" value="presence" checked>
             <span>presence</span>
             <button class="polarity-toggle" data-polarity="positive" title="Answer polarity: positive">+</button>
           </label>
+
           <label class="type-pill">
             <input type="checkbox" value="location" checked>
             <span>location</span>
             <button class="polarity-toggle" data-polarity="positive" title="Answer polarity: positive">+</button>
           </label>
+
           <label class="type-pill">
             <input type="checkbox" value="classification">
             <span>classification</span>
             <button class="polarity-toggle" data-polarity="positive" title="Answer polarity: positive" style="display:none;">+</button>
           </label>
+
+          <label class="type-pill">
+            <input type="checkbox" value="anatomy">
+            <span>anatomy</span>
+            <button class="polarity-toggle" data-polarity="positive" title="Answer polarity: positive" style="display:none;">+</button>
+          </label>
+
+          <label class="type-pill">
+            <input type="checkbox" value="knowledge">
+            <span>knowledge</span>
+            <button class="polarity-toggle" data-polarity="positive" title="Answer polarity: positive" style="display:none;">+</button>
+          </label>
+
           <label class="type-pill">
             <input type="checkbox" value="characteristic">
             <span>characteristic</span>
             <button class="polarity-toggle" data-polarity="positive" title="Answer polarity: positive" style="display:none;">+</button>
           </label>
+
+          <label class="type-pill">
+            <input type="checkbox" value="plane">
+            <span>plane</span>
+            <button class="polarity-toggle" data-polarity="positive" title="Answer polarity: positive" style="display:none;">+</button>
+          </label>
+
         </div>
         <span class="ai-type-hint" id="aiTypeHint">2 / 2</span>
       </div>
@@ -134,7 +159,7 @@
     </div>
 
     <div class="tasks-scroll" id="tasksScroll">
-      <!-- Task cards injected by annotations.js -->
+      <!-- VQA cards injected dynamically -->
     </div>
 
     <div class="status-bar">

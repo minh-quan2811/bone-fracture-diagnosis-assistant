@@ -591,7 +591,7 @@ body {
   cursor: pointer;
   flex-shrink: 0;
   position: relative;
-  transition: border-color 0.15s;
+  transition: all 0.15s ease;
   background: var(--surface2);
   display: flex;
   align-items: center;
@@ -605,6 +605,33 @@ body {
 .thumb.active { 
   border-color: var(--accent); 
   box-shadow: 0 0 8px rgba(46, 125, 92, 0.3);
+}
+
+/* Non-generated state (count = 0) */
+.thumb.not-generated {
+  background: var(--color-gray-100);
+}
+
+.thumb.not-generated:hover {
+  border-color: var(--color-gray-300);
+  background: var(--color-gray-200);
+}
+
+/* Generated state (count > 0) */
+.thumb.generated {
+  background: var(--color-primary-light);
+  box-shadow: 0 2px 8px rgba(107, 191, 138, 0.25);
+}
+
+.thumb.generated:hover {
+  border-color: var(--color-primary-medium);
+  background: var(--color-primary-medium);
+  box-shadow: 0 2px 12px rgba(107, 191, 138, 0.35);
+}
+
+.thumb.generated.active {
+  border-color: var(--color-primary-darkest);
+  box-shadow: 0 0 12px rgba(27, 94, 58, 0.4);
 }
 
 .thumb-content {
@@ -621,9 +648,19 @@ body {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 16px;
   font-weight: 700;
-  color: var(--accent);
   text-align: center;
   letter-spacing: 0.05em;
+}
+
+/* Text color for non-generated items */
+.thumb.not-generated .thumb-task-count {
+  color: var(--color-gray-500);
+}
+
+/* Text color for generated items */
+.thumb.generated .thumb-task-count {
+  color: var(--color-white);
+  font-weight: 700;
 }
 
 .thumb-index {

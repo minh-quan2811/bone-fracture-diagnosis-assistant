@@ -6,7 +6,8 @@ An internal browser-based tool for annotating medical X-ray images with structur
 
 ## What it does
 
-- Lets you write **Visual QA**, **Radiology Report**, and **Rationale Diagnosis** annotations per image
+- Lets you write **Visual QA** annotations per image with 7 type of questions including **modality, presence, location, classification, anatomy, knowledge, characteristic,  plane**
+- Polarity of **positive** and **negative** answer.
 - Saves annotations to a CSV file directly in your dataset folder
 - Uses **Gemini** or **OpenRouter** to auto-generate annotation drafts — switchable in the UI
 
@@ -85,11 +86,11 @@ dataset/
 
 Each CSV has four columns:
 
-| image_path | task_type | question | answer |
-|---|---|---|---|
-| train/images/img001.jpg | vqa | What type of fracture is present? | Transverse fracture of the mid-shaft femur... |
-| train/images/img001.jpg | report | Generate a radiology report. | FINDINGS: ... IMPRESSION: ... |
-| train/images/img001.jpg | rationale | Why is this finding classified as shown? | The cortical disruption is visible... |
+| image_path | task_type | polarity | question_type | answer_type | question | answer|
+|---|---|---|---|---|---|---|
+| train/images/1.jpg |	vqa	| positive | presence |	closed |	Does this image show an oblique fracture of the distal tibia? |	yes |
+| train/images/1.jpg |	vqa |	negative |	characteristic |	closed |	Is the finding here consistent with anatomical alignment? |	no |
+| train/images/1.jpg |	vqa |	positive |	location |	open |	In what part of the image is the fracture situated? |	femur shaft |
 
 ---
 
