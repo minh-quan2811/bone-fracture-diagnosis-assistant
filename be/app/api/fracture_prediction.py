@@ -56,11 +56,15 @@ async def run_ai_prediction(
     if not prediction:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prediction not found")
     
-    # Dispatch Celery task
-    from app.tasks.fracture_tasks import run_ai_prediction as run_ai_task
-    task = run_ai_task.delay(
-        user_id=current_user.id,
-        prediction_id=prediction_id
+    # Import the Celery app and send task
+    from celery_app import celery_app
+    
+    task = celery_app.send_task(
+        'app.tasks.fracture_tasks.run_ai_prediction',
+        kwargs={
+            'user_id': current_user.id,
+            'prediction_id': prediction_id
+        }
     )
     
     return {

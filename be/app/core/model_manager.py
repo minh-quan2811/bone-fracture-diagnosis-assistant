@@ -33,7 +33,7 @@ class ModelManager:
         """
         return ChatGoogleGenerativeAI(
             google_api_key=settings.GEMINI_API_KEY,
-            model="gemini-2.0-flash",
+            model="gemini-3.1-flash-lite-preview",
             temperature=0.7
         )
 

@@ -1,10 +1,8 @@
-from celery_app import celery_app
 from app.core.database import SessionLocal
 from app.models.user import User
 from app.services.upload_service import UploadService
 
 
-@celery_app.task(name='app.tasks.document_tasks.process_document')
 def process_document(user_id: int, file_content_b64: str, filename: str, collection_name: str, index_id: str):
     """
     Process document upload in background
@@ -13,15 +11,12 @@ def process_document(user_id: int, file_content_b64: str, filename: str, collect
     
     db = SessionLocal()
     try:
-        # Decode file content
         file_content = base64.b64decode(file_content_b64)
         
-        # Get user
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             return {"status": "error", "error": "User not found"}
         
-        # Process document
         result, status_code = UploadService.upload_document(
             file_content=file_content,
             filename=filename,
