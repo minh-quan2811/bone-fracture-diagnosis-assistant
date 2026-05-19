@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fracture VLM Annotation Tool</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/ai-panel.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-title">VLM ANNOTATOR</div>
+  <div class="header-sep"></div>
+  <div class="split-tabs">
+    <button class="split-tab" onclick="switchSplit('train')">train</button>
+    <button class="split-tab" onclick="switchSplit('valid')">valid</button>
+    <button class="split-tab" onclick="switchSplit('test')">test</button>
+  </div>
+  <div class="header-sep"></div>
+  <div class="header-right">
+    <span class="counter">image <span id="counterCur">—</span> / <span id="counterTotal">—</span></span>
+    <button class="load-btn" onclick="showLoadModal()">load dataset</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT: IMAGE + AI PANEL + THUMBNAIL -->
+  <div class="left-panel">
+    <div class="image-toolbar">
+      <button class="nav-btn" id="btnPrev" onclick="navigate(-1)" disabled>prev</button>
+      <span class="img-filename" id="imgFilename">no image loaded</span>
+      <button class="nav-btn" id="btnNext" onclick="navigate(1)" disabled>next</button>
+    </div>
+    <div class="image-area" id="imageArea">
+      <div class="empty-state" id="emptyState">
+        <div class="big">[  ]</div>
+        <p>load a dataset folder to begin</p>
+      </div>
+      <canvas id="imgCanvas" style="display:none;"></canvas>
+    </div>
+
+    <!-- ── AI ASSIST PANEL ─────────────────────────────────────────────────── -->
+    <div id="aiPanel" class="ai-panel">
+
+      <!-- Row 1: title + provider tabs + model selector + key toggle -->
+      <div class="ai-panel-header">
+        <span class="ai-panel-icon">✦</span>
+        <span class="ai-panel-title">ai assist</span>
+        <div id="aiProviderTabs" class="ai-provider-tabs"></div>
+        <select id="aiModelSelect" class="ai-model-select"></select>
+        <button id="aiKeyToggle" class="ai-key-toggle" title="Use custom API key">key</button>
+      </div>
+
+      <!-- Row 1.5: Custom API key input (collapsed by default) -->
+      <div id="aiKeyRow" class="ai-key-row hidden">
+        <input
+          type="password"
+          id="aiCustomKey"
+          class="ai-custom-key"
+          placeholder="Enter custom API key (optional)"
+        >
+        <button class="ai-key-clear" onclick="window.aiClearCustomKey()" title="Clear and use .env key">reset</button>
+      </div>
+
+      <!-- Row 2: VQA type selector -->
+      <div class="ai-type-row">
+        <span class="ai-type-label">vqa types</span>
+        <div class="ai-type-pills" id="aiTypePills">
+
+          <label class="type-pill">
+            <input type="checkbox" value="modality">
+            <span>modality</span>
+            <button class="polarity-toggle" data-polarity="positive" title="Answer polarity: positive" style="display:none;">+</button>
+          </label>
+
+          <label class="type-pill">
+            <input type="checkbox" value="presence" checked>
+            <span>presence</span>
+            <button class="polarity-toggle" data-polarity="positive" title="Answer polarity: positive">+</button>
+          </label>
+
+          <label class="type-pill">
+            <input type="checkbox" value="location" checked>
+            <span>location</span>
+            <button class="polarity-toggle" data-polarity="positive" title="Answer polarity: positive">+</button>
+          </label>
+
+          <label class="type-pill">
+            <input type="checkbox" value="classification">
+            <span>classification</span>
+            <button class="polarity-toggle" data-polarity="positive" title="Answer polarity: positive" style="display:none;">+</button>
+          </label>
+
+          <label class="type-pill">
+            <input type="checkbox" value="anatomy">
+            <span>anatomy</span>
+            <button class="polarity-toggle" data-polarity="positive" title="Answer polarity: positive" style="display:none;">+</button>
+          </label>
+
+          <label class="type-pill">
+            <input type="checkbox" value="knowledge">
+            <span>knowledge</span>
+            <button class="polarity-toggle" data-polarity="positive" title="Answer polarity: positive" style="display:none;">+</button>
+          </label>
+
+          <label class="type-pill">
+            <input type="checkbox" value="characteristic">
+            <span>characteristic</span>
+            <button class="polarity-toggle" data-polarity="positive" title="Answer polarity: positive" style="display:none;">+</button>
+          </label>
+
+          <label class="type-pill">
+            <input type="checkbox" value="plane">
+            <span>plane</span>
+            <button class="polarity-toggle" data-polarity="positive" title="Answer polarity: positive" style="display:none;">+</button>
+          </label>
+
+        </div>
+        <span class="ai-type-hint" id="aiTypeHint">2 / 2</span>
+      </div>
+
+      <!-- Body: observation textarea + action buttons -->
+      <div class="ai-panel-body">
+        <textarea
+          id="aiObservation"
+          class="field-input ai-observation"
+          placeholder="describe what you see — e.g. transverse fracture mid-shaft femur, moderate displacement, no comminution..."
+        ></textarea>
+
+        <div class="ai-actions">
+          <button class="ai-generate-btn" id="aiGenerateBtn" onclick="window.aiGenerate()">
+            <span id="aiBtnText">generate</span>
+            <span id="aiBtnSpinner" class="ai-spinner hidden">⟳</span>
+          </button>
+          <button class="ai-clear-btn" onclick="window.aiClear()" title="Clear all task fields">
+            clear
+          </button>
+        </div>
+      </div>
+
+      <!-- Status line -->
+      <div class="ai-status ai-status-dim" id="aiStatus"></div>
+
+    </div>
+    <!-- ── /AI ASSIST PANEL ────────────────────────────────────────────────── -->
+
+    <div class="thumb-strip" id="thumbStrip"></div>
+  </div>
+
+  <!-- RIGHT: TASK EDITOR -->
+  <div class="right-panel">
+    <div class="right-header">
+      <span class="right-header-title">task annotations</span>
+      <button class="save-btn" id="saveBtn" onclick="saveCurrentImage()" disabled>save</button>
+    </div>
+
+    <div class="tasks-scroll" id="tasksScroll">
+      <!-- VQA cards injected dynamically -->
+    </div>
+
+    <div class="status-bar">
+      <div class="status-dot" id="statusDot" style="background:var(--text-muted)"></div>
+      <span class="status-msg" id="statusMsg">ready — load a dataset to begin</span>
+      <span class="csv-hint" id="csvHint"></span>
+    </div>
+  </div>
+</div>
+
+<!-- LOAD MODAL -->
+<div class="modal-overlay hidden" id="loadModal">
+  <div class="modal">
+    <div class="modal-title">// load dataset</div>
+    <p>Select your YOLOv8 dataset root folder. The tool expects this structure:</p>
+    <div class="modal-steps">
+      <b>dataset/</b><br>
+      &nbsp;&nbsp;train/ &nbsp;&rarr; images/ &amp; labels/<br>
+      &nbsp;&nbsp;valid/ &nbsp;&rarr; images/ &amp; labels/<br>
+      &nbsp;&nbsp;test/ &nbsp;&rarr; images/ &amp; labels/<br>
+      &nbsp;&nbsp;data.yaml &nbsp;<b>(classes here)</b>
+    </div>
+    <div class="drag-zone" id="dragZone" onclick="loadDatasetFolder()">
+      <div class="drag-label">click to select folder</div>
+    </div>
+    <input type="file" id="folderInput" webkitdirectory multiple onchange="handleFolderLoad(this.files)" style="display:none;">
+    <div class="modal-btns">
+      <button class="modal-btn secondary" onclick="hideLoadModal()">cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

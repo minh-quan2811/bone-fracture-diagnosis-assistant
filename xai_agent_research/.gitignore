@@ -1,0 +1,36 @@
+# Environments
+.env
+.venv
+env/
+venv/
+*_venv/
+
+# Compliled files
+__pycache__/
+*.pyc
+
+# Model weights
+*.pt
+*.pth
+*.onnx
+
+# Ignore all common image files
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.gif
+*.tiff
+*.webp
+
+# Ignore document files
+*.pdf
+*.docx
+*.doc
+*.rtf
+*.odt
+*.xls
+*.xlsx
+*.csv
+*.ppt
+*.pptx
