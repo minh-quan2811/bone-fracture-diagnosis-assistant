@@ -12,8 +12,7 @@
 
 ## 🎬 Demo Video
 
-[![Demo Video](https://img.shields.io/badge/Watch%20Demo-YouTube-FF0000?logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=your-video-id)
-
+[![Demo Video](assets/thumbnail.jpg)](https://youtu.be/0D5_F5Vy9jU)
 ---
 
 ## 📋 Table of Contents
