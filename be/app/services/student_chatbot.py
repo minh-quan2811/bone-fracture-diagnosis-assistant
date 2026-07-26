@@ -20,7 +20,7 @@ os.environ["LANGSMITH_PROJECT"] = settings.LANGSMITH_PROJECT
 
 class AgentState(TypedDict):
     question: str
-    chat_history: Optional[List[dict]]
+    memory_context: Optional[str]
     retrieved_nodes: List[object]
     context: str
     answer: str
@@ -80,11 +80,14 @@ class StudentChatbot:
 
         question = state["question"]
         context = state["context"]
+        memory_context = state.get("memory_context")
 
         context_block = context if context.strip() else "No relevant documents were found in the knowledge base for this question."
+        memory_block = f"{memory_context}\n\n" if memory_context else ""
 
         prompt = (
             f"{SYSTEM_PROMPT}\n\n"
+            f"{memory_block}"
             f"Retrieved Context:\n{context_block}\n\n"
             f"Student Question: {question}\n\n"
             f"Answer:"
@@ -129,10 +132,10 @@ class StudentChatbot:
         builder.add_edge("generate", END)
         return builder.compile()
 
-    def run(self, user_message: str, chat_history: Optional[List[dict]] = None) -> str:
+    def run(self, user_message: str, memory_context: Optional[str] = None) -> str:
         initial_state: AgentState = {
             "question": user_message,
-            "chat_history": chat_history,
+            "memory_context": memory_context,
             "retrieved_nodes": [],
             "context": "",
             "answer": "",

@@ -63,7 +63,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ## 6. Start the Celery worker (separate terminal)
 
 ```bash
-celery -A celery_app worker -Q fracture_queue,document_queue --loglevel=info --pool=solo
+celery -A celery_app worker -Q fracture_queue,document_queue,memory_queue --loglevel=info --pool=solo
 ```
 
 ## Option 2 — With Docker

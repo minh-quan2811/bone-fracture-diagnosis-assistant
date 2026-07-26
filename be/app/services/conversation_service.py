@@ -4,6 +4,7 @@ from app.models.message import Message
 from app.models.user import User
 from app.enums.roles import RoleEnum
 from app.services.student_chatbot import chatbot
+from app.services.memory.context_builder import context_builder
 from typing import List, Dict, Optional, Tuple
 
 
@@ -93,9 +94,12 @@ class ConversationService:
             db.add(human_msg)
             db.commit()
             db.refresh(human_msg)
-            
+
+            # Context builder
+            memory = context_builder.build(db, current_user.id, conversation_id)
+
             # Generate chatbot response with assistant role
-            ai_response = chatbot.run(message_content)
+            ai_response = chatbot.run(message_content, memory_context=memory.formatted_block)
             ai_msg = Message(
                 conversation_id=conversation_id,
                 sender_id=None, 
@@ -105,7 +109,10 @@ class ConversationService:
             db.add(ai_msg)
             db.commit()
             db.refresh(ai_msg)
-            
+
+            from app.tasks.memory_tasks import record_turn
+            record_turn.delay(current_user.id, conversation_id, message_content, ai_response)
+
             return {
                 "messages": [human_msg, ai_msg],
                 "status": 200

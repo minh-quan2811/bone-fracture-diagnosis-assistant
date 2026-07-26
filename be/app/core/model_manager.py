@@ -37,6 +37,19 @@ class ModelManager:
             temperature=0.7
         )
 
+    def get_summarization_llm(self):
+        """
+        Cheap/fast LLM instance used by the agent memory system to:
+          - compress an agent reply into a 1-2 sentence summary before it
+            enters the Redis raw buffer, and
+          - merge/compress session summaries for the Postgres buffer.
+        """
+        return ChatGoogleGenerativeAI(
+            google_api_key=settings.GEMINI_API_KEY,
+            model="gemini-3.1-flash-lite-preview",
+            temperature=0.2,
+        )
+
     def get_model_rerank(self):
         """
         Get Cohere rerank model instance.

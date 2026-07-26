@@ -18,6 +18,7 @@ from app.models.conversation import Conversation
 from app.models.message import Message
 from app.models.fracture_prediction import FracturePrediction, FractureDetection
 from app.models.document_upload import DocumentUpload
+from app.models.session_summary import SessionSummary
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
