@@ -33,6 +33,7 @@ __pycache__/
 *.csv
 *.ppt
 *.pptx
+*.zip
 
 # Ignore Python cache files
 __pycache__/

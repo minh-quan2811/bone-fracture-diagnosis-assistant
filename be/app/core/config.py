@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     S3_BUCKET_DOCUMENTS: str
     ALLOWED_ORIGINS: str
     REDIS_URL: str
+    LANGSMITH_TRACING: str
+    LANGSMITH_API_KEY: str
+    LANGSMITH_PROJECT: str
 
     class Config:
         env_file = '.env'
