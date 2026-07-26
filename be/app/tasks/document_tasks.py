@@ -1,8 +1,10 @@
 from app.core.database import SessionLocal
 from app.models.user import User
 from app.services.upload_service import UploadService
+from celery_app import celery_app
 
 
+@celery_app.task(name='app.tasks.document_tasks.process_document')
 def process_document(user_id: int, file_content_b64: str, filename: str, collection_name: str, index_id: str):
     """
     Process document upload in background

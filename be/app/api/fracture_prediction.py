@@ -64,7 +64,8 @@ async def run_ai_prediction(
         kwargs={
             'user_id': current_user.id,
             'prediction_id': prediction_id
-        }
+        },
+        queue='fracture_queue'
     )
     
     return {

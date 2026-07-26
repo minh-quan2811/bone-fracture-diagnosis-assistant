@@ -1,3 +1,4 @@
+from celery_app import celery_app
 from app.core.database import SessionLocal
 from app.models.user import User
 from app.models.fracture_prediction import FracturePrediction, PredictionSource
@@ -5,7 +6,7 @@ from app.services.fracture_service import FractureService
 from app.services.annotation_comparision import comparison_service
 from app.services.ai_feedback_service import ai_feedback_service
 
-
+@celery_app.task(name='app.tasks.fracture_tasks.run_ai_prediction')
 def run_ai_prediction(user_id: int, prediction_id: int):
     """
     Run AI prediction AND generate comparison in one task
