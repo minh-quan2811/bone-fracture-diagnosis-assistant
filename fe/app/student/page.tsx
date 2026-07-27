@@ -84,7 +84,6 @@ export default function StudentPage() {
 
   const handleSendMessage = async (messageContent: string) => {
     if (!activeConversation) return;
-
     try {
       await sendMessage(
         activeConversation.id,
@@ -115,45 +114,57 @@ export default function StudentPage() {
 
   return (
     <DashboardLayout>
-      {/* Sidebar - conditionally rendered with transition */}
-      <div className={`${sidebarVisible ? 'w-56' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden`}>
-        <ChatSidebar
-          user={user}
-          conversations={conversations}
-          activeConversationId={activeConversation?.id || null}
-          onNewChat={handleNewConversation}
-          onSelectConversation={handleSelectConversation}
-          onLogout={logout}
-          onToggleSidebar={toggleSidebar}
-        />
+      {/*
+        Sidebar wrapper:
+        - Outer div transitions its width (0 → 260px) creating a smooth slide effect.
+        - overflow-hidden clips the sidebar as it collapses.
+        - Inner div holds the fixed 260px sidebar so it doesn't squish during animation.
+      */}
+      <div
+        className="flex-shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out"
+        style={{ width: sidebarVisible ? "260px" : "0px" }}
+      >
+        <div className="w-[260px] h-full">
+          <ChatSidebar
+            user={user}
+            conversations={conversations}
+            activeConversationId={activeConversation?.id || null}
+            onNewChat={handleNewConversation}
+            onSelectConversation={handleSelectConversation}
+            onLogout={logout}
+            onToggleSidebar={toggleSidebar}
+          />
+        </div>
       </div>
 
-      {/* Main content area - adjust width based on sidebar visibility */}
-      <div className={`flex-1 flex flex-col min-h-0 overflow-hidden ${sidebarVisible ? "" : "w-full"}`}>
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <ResizableLayout className="flex-1">
           <ResizableLayout.Panel defaultSize={60} minSize={40} className="flex flex-col overflow-hidden">
             {activeConversation ? (
               <>
-                {/* Chat Header with sidebar toggle only when sidebar is hidden */}
-                <div className="flex-shrink-0 bg-white border-b border-gray-200 p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {!sidebarVisible && (
-                        <SidebarToggleButton isVisible={sidebarVisible} onToggle={toggleSidebar} />
-                      )}
-                      <div>
-                        <h2 className="font-semibold text-gray-900">
-                          {activeConversation.title || "New Chat"}
-                        </h2>
-                        <p className="text-sm text-gray-500">
-                          Ask me about bone fractures and injuries
-                        </p>
-                      </div>
+                {/* Chat header */}
+                <div className="flex-shrink-0 bg-white border-b border-gray-100 px-5 py-3.5">
+                  <div className="flex items-center gap-3">
+                    {/* Expand toggle — only shown when sidebar is hidden */}
+                    {!sidebarVisible && (
+                      <SidebarToggleButton isVisible={sidebarVisible} onToggle={toggleSidebar} />
+                    )}
+                    <div>
+                      <h2 className="font-semibold text-gray-900 text-sm leading-snug">
+                        {activeConversation.title || "New Chat"}
+                      </h2>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Ask me about bone fractures and injuries
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
+                <div
+                  ref={messagesContainerRef}
+                  className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0"
+                >
                   {messages.length === 0 ? (
                     <EmptyMessageState userRole={user?.role} />
                   ) : (
@@ -182,9 +193,9 @@ export default function StudentPage() {
                 </div>
               </>
             ) : (
-              <div className="flex-1 overflow-hidden">
-                {/* Empty state with sidebar toggle only when sidebar is hidden */}
-                <div className="flex-shrink-0 bg-white border-b border-gray-200 p-4">
+              <div className="flex-1 overflow-hidden flex flex-col">
+                {/* Top bar with expand toggle */}
+                <div className="flex-shrink-0 bg-white border-b border-gray-100 px-4 py-3">
                   {!sidebarVisible && (
                     <SidebarToggleButton isVisible={sidebarVisible} onToggle={toggleSidebar} />
                   )}

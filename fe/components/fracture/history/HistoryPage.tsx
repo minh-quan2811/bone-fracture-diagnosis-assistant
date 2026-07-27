@@ -2,11 +2,60 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useHistoryData, useOverallStats } from '@/hooks/fracture/history';
 import { FractureService } from '@/services/fractureService';
 import { OverallStatsCard } from './OverallStatsCard';
-import { ComparisonResultsCard } from '../detection';
+import { ComparisonResultsButton, ComparisonResultsSidePanel } from '../comparison';
 
 interface HistoryPageProps {
   token: string;
   onBack: () => void;
+}
+
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors duration-150 group"
+    >
+      <svg
+        className="w-4 h-4 transition-transform duration-150 group-hover:-translate-x-0.5"
+        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+      </svg>
+      Back to Detection
+    </button>
+  );
+}
+
+function NavButton({ onClick, disabled, direction }: {
+  onClick: () => void;
+  disabled: boolean;
+  direction: 'prev' | 'next';
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={direction === 'prev' ? 'Previous' : 'Next'}
+      title={direction === 'prev' ? 'Previous (←)' : 'Next (→)'}
+      className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:border-[#2E7D5C] hover:text-[#2E7D5C] disabled:opacity-25 disabled:cursor-not-allowed transition-colors duration-150"
+    >
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {direction === 'prev'
+          ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        }
+      </svg>
+    </button>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg className="w-5 h-5 animate-spin text-[#2E7D5C]" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
+  );
 }
 
 export function HistoryPage({ token, onBack }: HistoryPageProps) {
@@ -14,91 +63,76 @@ export function HistoryPage({ token, onBack }: HistoryPageProps) {
   const stats = useOverallStats(comparisons);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fadeIn, setFadeIn] = useState(true);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const [isComparisonPanelOpen, setIsComparisonPanelOpen] = useState(false);
+  const canvasRef  = useRef<HTMLCanvasElement>(null);
+  const imgRef     = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const panelRootRef = useRef<HTMLDivElement>(null);
 
   const handlePrevious = useCallback(() => {
     if (currentIndex > 0) {
       setFadeIn(false);
-      setTimeout(() => {
-        setCurrentIndex(prev => Math.max(0, prev - 1));
-        setFadeIn(true);
-      }, 150);
+      setTimeout(() => { setCurrentIndex(p => Math.max(0, p - 1)); setFadeIn(true); }, 150);
     }
   }, [currentIndex]);
 
   const handleNext = useCallback(() => {
     if (currentIndex < predictions.length - 1) {
       setFadeIn(false);
-      setTimeout(() => {
-        setCurrentIndex(prev => Math.min(predictions.length - 1, prev + 1));
-        setFadeIn(true);
-      }, 150);
+      setTimeout(() => { setCurrentIndex(p => Math.min(predictions.length - 1, p + 1)); setFadeIn(true); }, 150);
     }
   }, [currentIndex, predictions.length]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') handlePrevious();
       if (e.key === 'ArrowRight') handleNext();
       if (e.key === 'Escape') onBack();
     };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [handlePrevious, handleNext, onBack]);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, predictions.length, handlePrevious, handleNext, onBack]);
-
-  // Draw annotations on canvas when image loads
   const drawAnnotations = () => {
     if (!canvasRef.current || !imgRef.current || predictions.length === 0) return;
-
     const canvas = canvasRef.current;
-    const img = imgRef.current;
-    const ctx = canvas.getContext('2d');
+    const img    = imgRef.current;
+    const ctx    = canvas.getContext('2d');
     if (!ctx) return;
-
-    const currentPrediction = predictions[currentIndex];
-    
-    // Set canvas size to match image
-    canvas.width = img.naturalWidth;
+    const pred = predictions[currentIndex];
+    canvas.width  = img.naturalWidth;
     canvas.height = img.naturalHeight;
-
-    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw all detections
-    currentPrediction.detections.forEach(detection => {
-      const color = detection.source === 'student' ? '#3b82f6' : '#ef4444';
-      
+    pred.detections.forEach(d => {
+      const color = d.source === 'student' ? '#3b82f6' : '#ef4444';
       ctx.strokeStyle = color;
-      ctx.lineWidth = 3;
-      ctx.strokeRect(detection.x_min, detection.y_min, detection.width, detection.height);
-      
-      // Draw label background
-      const label = `${detection.fracture_type || detection.class_name}${
-        detection.confidence ? ` ${(detection.confidence * 100).toFixed(0)}%` : ''
-      }`;
-      
+      ctx.lineWidth   = 3;
+      ctx.strokeRect(d.x_min, d.y_min, d.width, d.height);
+      const label = `${d.fracture_type || d.class_name}${d.confidence ? ` ${(d.confidence * 100).toFixed(0)}%` : ''}`;
       ctx.font = '14px Arial';
-      const textWidth = ctx.measureText(label).width;
-      
+      const tw = ctx.measureText(label).width;
       ctx.fillStyle = color;
-      ctx.fillRect(detection.x_min, detection.y_min - 20, textWidth + 10, 20);
-      
+      ctx.fillRect(d.x_min, d.y_min - 20, tw + 10, 20);
       ctx.fillStyle = 'white';
-      ctx.fillText(label, detection.x_min + 5, detection.y_min - 5);
+      ctx.fillText(label, d.x_min + 5, d.y_min - 5);
     });
   };
 
+  const formatDate = (s: string) =>
+    new Date(s).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+
+  /* ── States ── */
   if (isLoading) {
     return (
-      <div className="h-full bg-gray-50 overflow-y-auto">
-        <div className="max-w-6xl mx-auto p-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="text-gray-600 text-lg">Loading history...</div>
-            </div>
+      <div className="h-full bg-white overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-8 py-6 space-y-6">
+          <BackButton onClick={onBack} />
+          <div className="mt-24 flex flex-col items-center gap-3">
+            <Spinner />
+            <p className="text-sm text-gray-400">Loading prediction history…</p>
           </div>
         </div>
       </div>
@@ -107,23 +141,12 @@ export function HistoryPage({ token, onBack }: HistoryPageProps) {
 
   if (error) {
     return (
-      <div className="h-full bg-gray-50 overflow-y-auto">
-        <div className="max-w-6xl mx-auto p-8">
-          <button
-            onClick={onBack}
-            className="mb-6 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors font-medium"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Detection
-          </button>
-          
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-            <div className="text-red-800">
-              <div className="font-semibold text-lg">Error Loading History</div>
-              <div className="text-sm mt-1">{error}</div>
-            </div>
+      <div className="h-full bg-white overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-8 py-6 space-y-6">
+          <BackButton onClick={onBack} />
+          <div className="mt-6 p-4 rounded-xl bg-red-50 border border-red-100">
+            <p className="text-sm font-semibold text-red-800">Failed to load history</p>
+            <p className="text-sm text-red-500 mt-0.5">{error}</p>
           </div>
         </div>
       </div>
@@ -132,174 +155,121 @@ export function HistoryPage({ token, onBack }: HistoryPageProps) {
 
   if (predictions.length === 0) {
     return (
-      <div className="h-full bg-gray-50 overflow-y-auto">
-        <div className="max-w-6xl mx-auto p-8">
-          <button
-            onClick={onBack}
-            className="mb-6 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors font-medium"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Detection
-          </button>
-          
-          <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">No Predictions Yet</h2>
-            <p className="text-gray-600">
-              Start making predictions to see your history here.
-            </p>
+      <div className="h-full bg-white overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-8 py-6 space-y-6">
+          <BackButton onClick={onBack} />
+          <div className="mt-16 py-20 text-center">
+            <p className="text-sm font-semibold text-gray-900">No predictions yet</p>
+            <p className="text-sm text-gray-400 mt-1">Upload and analyze an X-ray to see history.</p>
           </div>
         </div>
       </div>
     );
   }
 
-  const currentPrediction = predictions[currentIndex];
-  const currentComparison = comparisons.get(currentPrediction.id);
-  
-  const studentCount = currentPrediction.detections.filter(d => d.source === 'student').length;
-  const aiCount = currentPrediction.detections.filter(d => d.source === 'ai').length;
+  const pred   = predictions[currentIndex];
+  const comp   = comparisons.get(pred.id);
+  const sCount = pred.detections.filter(d => d.source === 'student').length;
+  const aCount = pred.detections.filter(d => d.source === 'ai').length;
 
   return (
-    <div className="h-full bg-gray-50 overflow-y-auto">
-      <div className="max-w-6xl mx-auto p-8 space-y-6 pb-16">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors font-medium"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to Detection
-        </button>
+    <div ref={panelRootRef} className="h-full bg-white overflow-y-auto">
+      {/* Comparison Results — slides out from the History Panel's left edge,
+          hugging its position/size, while the image viewer stays fully visible.
+          Content stays in sync with `comp`, which is derived from `currentIndex`,
+          so navigating Previous/Next updates the panel in place without closing it. */}
+      <ComparisonResultsSidePanel
+        isOpen={isComparisonPanelOpen}
+        onClose={() => setIsComparisonPanelOpen(false)}
+        anchorRef={panelRootRef}
+        comparison={comp}
+        imageLabel={pred.image_filename}
+        imageKey={pred.id}
+      />
 
-        <h1 className="text-3xl font-bold text-gray-900">
-          Prediction History
-        </h1>
+      <div className="max-w-4xl mx-auto px-8 py-6 space-y-6 pb-16">
+        <BackButton onClick={onBack} />
 
-        <OverallStatsCard stats={stats} />
+        {/* Page header */}
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight">Prediction History</h1>
+          <p className="text-sm text-gray-400 mt-0.5">
+            {predictions.length} scan{predictions.length !== 1 ? 's' : ''} analyzed
+          </p>
+        </div>
 
-        <div 
-          className={`transition-opacity duration-300 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}
-        >
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">
-                {currentPrediction.image_filename}
-              </h3>
-              <span className="text-sm text-gray-500">
-                {new Date(currentPrediction.created_at).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
+        {/* ── Image viewer ── */}
+        <div className={`border border-gray-100 rounded-2xl overflow-hidden transition-opacity duration-200 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+
+          {/* Card header */}
+          <div className="px-5 py-4 bg-white border-b border-gray-100 flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                {/* Scan type pill */}
+                <span className="inline-block px-2 py-0.5 rounded-md bg-[#EDF7F1] text-[#1B5E3A] text-[10px] font-bold uppercase tracking-wider border border-[#A8D5BA]">
+                  X-Ray
+                </span>
+                <p className="text-sm font-semibold text-gray-900 truncate">{pred.image_filename}</p>
+              </div>
+              <p className="text-xs text-gray-400 mt-0.5">{formatDate(pred.created_at)}</p>
+            </div>
+
+            {/* Navigation */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <NavButton onClick={handlePrevious} disabled={currentIndex === 0} direction="prev" />
+              <span className="min-w-[52px] text-center text-xs font-semibold text-gray-600 bg-gray-100 px-2.5 py-1.5 rounded-lg tabular-nums">
+                {currentIndex + 1} / {predictions.length}
               </span>
-            </div>
-            
-            {/* Image with Canvas Overlay */}
-            <div 
-              ref={containerRef}
-              className="bg-gray-100 rounded-lg flex items-center justify-center p-8 min-h-[500px] relative"
-            >
-              <div className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img 
-                  ref={imgRef}
-                  src={FractureService.getImageUrl(currentPrediction.image_path)}
-                  alt={currentPrediction.image_filename || 'Fracture image'}
-                  className="max-w-full max-h-[600px] object-contain"
-                  onLoad={drawAnnotations}
-                  onError={(e) => {
-                    console.error('Failed to load image:', currentPrediction.image_path);
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-                <canvas
-                  ref={canvasRef}
-                  className="absolute top-0 left-0 w-full h-full"
-                  style={{ pointerEvents: 'none' }}
-                />
-              </div>
-            </div>
-
-            {/* Image Navigator - Below Image */}
-            <div className="mt-4 flex items-center justify-center gap-3">
-              <button
-                onClick={handlePrevious}
-                disabled={currentIndex === 0}
-                className="p-2 bg-gray-700 text-white rounded hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                aria-label="Previous image"
-                title="Previous (←)"
-              >
-                <svg 
-                  className="w-4 h-4" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M15 19l-7-7 7-7" 
-                  />
-                </svg>
-              </button>
-              
-              <div className="text-center min-w-[100px]">
-                <div className="text-lg font-bold text-gray-900">
-                  {currentIndex + 1} / {predictions.length}
-                </div>
-              </div>
-              
-              <button
-                onClick={handleNext}
-                disabled={currentIndex === predictions.length - 1}
-                className="p-2 bg-gray-700 text-white rounded hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                aria-label="Next image"
-                title="Next (→)"
-              >
-                <svg 
-                  className="w-4 h-4" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M9 5l7 7-7 7" 
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {/* Legend */}
-            <div className="mt-4 flex items-center justify-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                <span className="text-sm text-gray-700">
-                  Student Predictions ({studentCount})
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-red-500 rounded"></div>
-                <span className="text-sm text-gray-700">
-                  AI Predictions ({aiCount})
-                </span>
-              </div>
+              <NavButton onClick={handleNext} disabled={currentIndex === predictions.length - 1} direction="next" />
+              <div className="w-px h-5 bg-gray-200 mx-0.5" />
+              <ComparisonResultsButton
+                isOpen={isComparisonPanelOpen}
+                onClick={() => setIsComparisonPanelOpen((prev) => !prev)}
+                hasData={!!comp}
+              />
             </div>
           </div>
 
-          {/* Comparison Results Card */}
-          {currentComparison && (
-            <ComparisonResultsCard comparison={currentComparison} />
-          )}
+          {/* Image */}
+          <div ref={containerRef} className="bg-gray-50 flex items-center justify-center p-6 min-h-[400px]">
+            <div className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                ref={imgRef}
+                src={FractureService.getImageUrl(pred.image_path)}
+                alt={pred.image_filename || 'Fracture scan'}
+                className="max-w-full max-h-[540px] object-contain rounded-lg"
+                onLoad={drawAnnotations}
+                onError={e => { e.currentTarget.style.display = 'none'; }}
+              />
+              <canvas
+                ref={canvasRef}
+                className="absolute top-0 left-0 w-full h-full rounded-lg"
+                style={{ pointerEvents: 'none' }}
+              />
+            </div>
+          </div>
+
+          {/* Card footer */}
+          <div className="px-5 py-3 bg-white border-t border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {/* Student badge */}
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                Student · {sCount}
+              </span>
+              {/* AI badge */}
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-red-500" />
+                AI · {aCount}
+              </span>
+            </div>
+            <p className="text-xs text-gray-400 select-none">← → keys to navigate</p>
+          </div>
         </div>
+
+        {/* Stats */}
+        <OverallStatsCard stats={stats} />
       </div>
     </div>
   );

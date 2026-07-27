@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "../styles/colors.css";
 
@@ -26,30 +27,33 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Sidebar uses Inter */
+.sidebar-font {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
 html, body {
   height: 100%;
   width: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* Prevent page-level scrolling */
+  overflow: hidden;
   box-sizing: border-box;
 }
 
-/* Ensure the Next.js root div takes full height */
 #__next {
   height: 100%;
   width: 100%;
 }
 
-/* Reset any default margins/padding that might cause the black border */
 * {
   box-sizing: border-box;
 }
 
-/* Hide scrollbars for webkit browsers while keeping scroll functionality */
+/* Thin, subtle scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -57,16 +61,15 @@ html, body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.2);
 }
 
-/* For Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
 }
