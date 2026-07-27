@@ -11,6 +11,7 @@ import sys
 
 from app.core.database import SessionLocal
 from app.core.config import settings
+from app.core.memory_config import MEMORY_REDIS_TOKEN_BUDGET
 from app.enums.roles import RoleEnum
 from app.models.user import User
 from app.models.conversation import Conversation
@@ -74,7 +75,7 @@ def _print_memory_diagnostics(db, user_id, conversation_id):
     summary_row = summary_store.get(db, conversation_id)
     summary_state = f"{summary_row.token_count} tok" if summary_row else "none yet"
     print(
-        f"[memory] redis: {len(messages)} msg(s), {token_total}/{settings.MEMORY_REDIS_TOKEN_BUDGET} tok"
+        f"[memory] redis: {len(messages)} msg(s), {token_total}/{MEMORY_REDIS_TOKEN_BUDGET} tok"
         f" | postgres summary: {summary_state}"
     )
 

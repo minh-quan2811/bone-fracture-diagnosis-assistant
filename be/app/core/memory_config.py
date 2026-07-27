@@ -1,0 +1,10 @@
+"""
+Memory system configuration constants.
+"""
+
+MEMORY_REDIS_TTL_SECONDS: int = 7200          # 2 hours
+MEMORY_REDIS_TOKEN_BUDGET: int = 2000
+MEMORY_SUMMARY_TOKEN_LIMIT: int = 500
+MEMORY_SUMMARIZE_OLDEST_RATIO: float = 0.6
+MEMORY_FILLER_MIN_CHARS: int = 15
+MEMORY_SYSTEM_PROMPT_TOKENS: int = 200

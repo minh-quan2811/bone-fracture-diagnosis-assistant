@@ -1,14 +1,11 @@
-"""
-Orchestrates writes into the two-buffer memory system. Kept as plain,
-directly-callable logic (no Celery decorators here) so it's easy to test;
-app/tasks/memory_tasks.py wraps these as background Celery tasks, matching
-the pattern used for document/fracture processing elsewhere in this repo.
-"""
 import logging
 
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
+from app.core.memory_config import (
+    MEMORY_SUMMARIZE_OLDEST_RATIO,
+    MEMORY_SUMMARY_TOKEN_LIMIT,
+)
 from app.services.memory.compressor import compress_reply, enforce_summary_limit, merge_and_summarize
 from app.services.memory.redis_buffer import RedisBuffer
 from app.services.memory.summary_store import summary_store
@@ -21,18 +18,8 @@ class MemoryService:
     def __init__(self, redis_buffer: RedisBuffer = None):
         self.redis_buffer = redis_buffer or RedisBuffer()
 
-    # -- turn recording (runs in the background, off the request path) ----
-
     def record_turn(self, user_id: int, conversation_id: int, user_message: str, full_agent_reply: str) -> bool:
-        """
-        Write the user's message and a compressed version of the agent's
-        reply into the Redis buffer. Returns True if a summarization
-        trigger was enqueued as a result of this write.
-
-        The FULL agent reply is what's already been returned to the user
-        by the request path before this ever runs — only the compressed
-        version enters Redis.
-        """
+        """Record user message and compressed agent reply to Redis buffer."""
         self.redis_buffer.add_message(user_id, conversation_id, role="user", content=user_message)
 
         compressed_reply = compress_reply(full_agent_reply)
@@ -45,29 +32,21 @@ class MemoryService:
         return False
 
     def _enqueue_summarization(self, user_id: int, conversation_id: int) -> bool:
-        # Imported here to avoid a circular import (memory_tasks imports
-        # this module to call run_summarization).
+        # Avoid circular import with memory_tasks
         from app.tasks.memory_tasks import summarize_session
 
         summarize_session.delay(user_id, conversation_id)
         return True
 
-    # -- summarization cycle (runs inside the Celery task) -----------------
-
     def run_summarization(self, db: Session, user_id: int, conversation_id: int) -> bool:
-        """
-        Executes one summarization cycle. Guarded by a Redis lock so two
-        concurrent triggers for the same session don't both run. Returns
-        True if a summary was written, False if skipped (e.g. lock held,
-        or nothing to summarize).
-        """
+        """Execute one summarization cycle guarded by Redis lock."""
         if not self.redis_buffer.acquire_summarization_lock(user_id, conversation_id):
             logger.info("Summarization already in progress for %s:%s, skipping", user_id, conversation_id)
             return False
 
         try:
             batch = self.redis_buffer.oldest_by_token_ratio(
-                user_id, conversation_id, settings.MEMORY_SUMMARIZE_OLDEST_RATIO
+                user_id, conversation_id, MEMORY_SUMMARIZE_OLDEST_RATIO
             )
             if not batch:
                 return False
@@ -80,9 +59,9 @@ class MemoryService:
             )
 
             updated_summary = merge_and_summarize(
-                existing_summary, new_messages_text, settings.MEMORY_SUMMARY_TOKEN_LIMIT
+                existing_summary, new_messages_text, MEMORY_SUMMARY_TOKEN_LIMIT
             )
-            updated_summary = enforce_summary_limit(updated_summary, settings.MEMORY_SUMMARY_TOKEN_LIMIT)
+            updated_summary = enforce_summary_limit(updated_summary, MEMORY_SUMMARY_TOKEN_LIMIT)
 
             summary_store.upsert(
                 db,

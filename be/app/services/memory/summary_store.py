@@ -1,6 +1,3 @@
-"""
-Durable session summary buffer, stored in Postgres (session_summaries table).
-"""
 from typing import Optional
 
 from sqlalchemy.orm import Session

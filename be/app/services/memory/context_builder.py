@@ -1,15 +1,3 @@
-"""
-Assembles agent context immediately before every LLM call, in order:
-  1. System prompt (fixed, ~200 tokens, passed in by the caller)
-  2. Postgres session summary (if one exists yet)
-  3. Redis raw messages (recent, verbatim)
-  4. Current user message (appended by the caller, not here)
-
-This is a pure read path — no LLM calls, no writes — so it stays fast on
-the hot request path. It never blocks on the background summarization job;
-if that job hasn't committed yet, this just reads whatever's currently in
-Postgres/Redis.
-"""
 from dataclasses import dataclass
 from typing import List
 
@@ -22,10 +10,10 @@ from app.utils.token_utils import count_tokens
 
 @dataclass
 class MemoryContext:
-    summary_text: str          # "" if no summary exists yet
-    raw_messages: List[dict]   # chronological, verbatim
-    formatted_block: str       # ready to inject into a prompt string
-    total_tokens: int          # summary + raw messages (excludes system prompt/current msg)
+    summary_text: str
+    raw_messages: List[dict]
+    formatted_block: str
+    total_tokens: int
 
 
 class ContextBuilder:
