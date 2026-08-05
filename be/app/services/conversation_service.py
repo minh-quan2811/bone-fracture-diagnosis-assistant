@@ -5,7 +5,7 @@ from app.models.user import User
 from app.enums.roles import RoleEnum
 from app.services.student_chatbot import chatbot
 from app.services.memory.context_builder import context_builder
-from typing import List, Dict, Optional, Tuple
+from typing import AsyncGenerator, List, Dict, Optional, Tuple
 
 
 class ConversationService:
@@ -64,25 +64,25 @@ class ConversationService:
         return conversation
     
     @staticmethod
-    def add_message_with_reply(
+    async def stream_message_with_reply(
         conversation_id: int,
         message_content: str,
         current_user: User,
-        db: Session
-    ) -> Tuple[Dict[str, any], int]:
-        """
-        Add a user message and get AI response
-        """
+        db: Session,
+    ) -> AsyncGenerator[Dict[str, str], None]:
+        """Add a user message and stream the AI response token by token."""
         conversation = db.query(Conversation).filter(
             Conversation.id == conversation_id
         ).first()
-        
+
         if not conversation:
-            return {"error": "Conversation not found"}, 404
-        
+            yield {"type": "error", "error": "Conversation not found"}
+            return
+
         if conversation.user_id != current_user.id:
-            return {"error": "Not authorized to add messages to this conversation"}, 403
-        
+            yield {"type": "error", "error": "Not authorized to add messages to this conversation"}
+            return
+
         try:
             # Save the human message with the user's role
             human_msg = Message(
@@ -98,32 +98,36 @@ class ConversationService:
             # Context builder
             memory = context_builder.build(db, current_user.id, conversation_id)
 
-            # Generate chatbot response with assistant role
-            ai_response = chatbot.run(message_content, memory_context=memory.formatted_block)
+            # Stream the chatbot's response, accumulating tokens so the
+            # full text can be persisted once streaming finishes
+            full_answer_parts: List[str] = []
+            async for event in chatbot.astream(message_content, memory_context=memory.formatted_block):
+                if event["type"] == "token":
+                    full_answer_parts.append(event["content"])
+                yield event
+
+            full_answer = "".join(full_answer_parts)
+
+            # Save the assistant message with the assistant role
             ai_msg = Message(
                 conversation_id=conversation_id,
-                sender_id=None, 
+                sender_id=None,
                 role=RoleEnum.ASSISTANT,
-                content=ai_response,
+                content=full_answer,
             )
             db.add(ai_msg)
             db.commit()
             db.refresh(ai_msg)
 
             from app.tasks.memory_tasks import record_turn
-            record_turn.delay(current_user.id, conversation_id, message_content, ai_response)
+            record_turn.delay(current_user.id, conversation_id, message_content, full_answer)
 
-            return {
-                "messages": [human_msg, ai_msg],
-                "status": 200
-            }, 200
-            
+            yield {"type": "done"}
+
         except Exception as e:
             db.rollback()
-            return {
-                "error": f"Failed to add message: {str(e)}"
-            }, 500
-    
+            yield {"type": "error", "error": f"Failed to add message: {str(e)}"}
+
     @staticmethod
     def get_conversation_messages(
         conversation_id: int,

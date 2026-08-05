@@ -34,10 +34,13 @@ export default function StudentPage() {
     selectConversation,
   } = useConversations();
 
-  // Messages
+  // Messages — includes streaming state
   const {
     messages,
     loading,
+    isStreaming,
+    streamingContent,
+    currentNode,
     loadMessages,
     sendMessage,
     messagesEndRef,
@@ -114,12 +117,6 @@ export default function StudentPage() {
 
   return (
     <DashboardLayout>
-      {/*
-        Sidebar wrapper:
-        - Outer div transitions its width (0 → 260px) creating a smooth slide effect.
-        - overflow-hidden clips the sidebar as it collapses.
-        - Inner div holds the fixed 260px sidebar so it doesn't squish during animation.
-      */}
       <div
         className="flex-shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out"
         style={{ width: sidebarVisible ? "260px" : "0px" }}
@@ -146,7 +143,6 @@ export default function StudentPage() {
                 {/* Chat header */}
                 <div className="flex-shrink-0 bg-white border-b border-gray-100 px-5 py-3.5">
                   <div className="flex items-center gap-3">
-                    {/* Expand toggle — only shown when sidebar is hidden */}
                     {!sidebarVisible && (
                       <SidebarToggleButton isVisible={sidebarVisible} onToggle={toggleSidebar} />
                     )}
@@ -165,14 +161,33 @@ export default function StudentPage() {
                   ref={messagesContainerRef}
                   className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0"
                 >
-                  {messages.length === 0 ? (
+                  {messages.length === 0 && !isStreaming ? (
                     <EmptyMessageState userRole={user?.role} />
                   ) : (
                     <>
                       {messages.map((message) => (
                         <MessageBubble key={message.id} message={message} />
                       ))}
-                      {loading && <TypingIndicator />}
+
+                      {/*
+                        Phase 1 — No tokens yet: show TypingIndicator with current node label.
+                        Phase 2 — Tokens arriving: swap to a streaming MessageBubble with cursor.
+                      */}
+                      {isStreaming && !streamingContent && (
+                        <TypingIndicator currentNode={currentNode} />
+                      )}
+                      {isStreaming && streamingContent && (
+                        <MessageBubble
+                          message={{
+                            id: -1,
+                            role: "assistant",
+                            content: streamingContent,
+                            created_at: new Date().toISOString(),
+                          }}
+                          streaming
+                        />
+                      )}
+
                       <div ref={messagesEndRef} />
                     </>
                   )}
@@ -181,7 +196,7 @@ export default function StudentPage() {
                 <div className="flex-shrink-0">
                   <ChatInput
                     onSendMessage={handleSendMessage}
-                    loading={loading}
+                    loading={loading || isStreaming}
                     placeholder="Ask about bone fractures, treatments, or symptoms..."
                     token={token}
                     showDocumentUpload={true}
@@ -194,7 +209,6 @@ export default function StudentPage() {
               </>
             ) : (
               <div className="flex-1 overflow-hidden flex flex-col">
-                {/* Top bar with expand toggle */}
                 <div className="flex-shrink-0 bg-white border-b border-gray-100 px-4 py-3">
                   {!sidebarVisible && (
                     <SidebarToggleButton isVisible={sidebarVisible} onToggle={toggleSidebar} />

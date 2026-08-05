@@ -5,6 +5,9 @@ import { MessageService } from "@/services/messageService";
 interface UseMessagesReturn {
   messages: Message[];
   loading: boolean;
+  isStreaming: boolean;
+  streamingContent: string;
+  currentNode: string | null;
   loadMessages: (conversationId: number, token: string) => Promise<void>;
   sendMessage: (
     conversationId: number,
@@ -19,12 +22,24 @@ interface UseMessagesReturn {
 
 /**
  * useMessages Hook
- * Manages message state and operations
- * Handles message loading, sending, and auto-scroll
+ * Manages message state and operations.
+ * Handles message loading, streaming responses, and auto-scroll.
+ *
+ * State breakdown:
+ *   loading        — true while fetching existing messages (conversation switch)
+ *   isStreaming    — true while the AI is generating a response
+ *   streamingContent — partial AI response text built up token by token
+ *   currentNode    — the LangGraph node currently executing ("classify", "retrieve", "generate")
  */
 export function useMessages(): UseMessagesReturn {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Streaming state
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingContent, setStreamingContent] = useState("");
+  const [currentNode, setCurrentNode] = useState<string | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -32,10 +47,10 @@ export function useMessages(): UseMessagesReturn {
     messagesEndRef.current?.scrollIntoView({ behavior });
   }, []);
 
-  // Auto-scroll when messages or loading state changes
+  // Auto-scroll whenever messages update or streaming content grows
   useEffect(() => {
     scrollToBottom();
-  }, [messages, loading, scrollToBottom]);
+  }, [messages, loading, streamingContent, isStreaming, scrollToBottom]);
 
   const loadMessages = useCallback(
     async (conversationId: number, token: string) => {
@@ -43,7 +58,6 @@ export function useMessages(): UseMessagesReturn {
         setLoading(true);
         const msgs = await MessageService.fetchMessages(conversationId, token);
         setMessages(msgs);
-        // Scroll to bottom immediately after loading
         setTimeout(() => scrollToBottom("auto"), 100);
       } catch (error) {
         console.error("Failed to load messages:", error);
@@ -62,33 +76,45 @@ export function useMessages(): UseMessagesReturn {
       token: string,
       onSuccess: () => Promise<void>
     ) => {
-      // Create temporary user message
+      // Show the user's message immediately
       const userMessage: Message = {
         id: Date.now(),
         content,
         role: "user",
         created_at: new Date().toISOString(),
       };
-
-      // Add user message to UI immediately
       setMessages((prev) => [...prev, userMessage]);
-      setLoading(true);
+
+      // Enter streaming mode
+      setIsStreaming(true);
+      setStreamingContent("");
+      setCurrentNode(null);
 
       try {
-        const newMessages = await MessageService.sendMessage(conversationId, content, token);
-        // Replace temporary message with actual response
-        setMessages((prev) => {
-          const withoutTempMessage = prev.slice(0, -1);
-          return [...withoutTempMessage, ...newMessages];
-        });
+        await MessageService.streamMessage(
+          conversationId,
+          content,
+          token,
+          // Called each time LangGraph moves to a new node
+          (node) => setCurrentNode(node),
+          // Called for each streamed token — append to build up the response
+          (chunk) => setStreamingContent((prev) => prev + chunk)
+        );
+
+        // Stream finished — fetch the now-persisted messages from the server
+        const msgs = await MessageService.fetchMessages(conversationId, token);
+        setMessages(msgs);
         await onSuccess();
       } catch (error) {
-        // Remove temporary message on error
+        // On failure, remove the optimistic user message
         setMessages((prev) => prev.slice(0, -1));
         console.error("Failed to send message:", error);
         throw error;
       } finally {
-        setLoading(false);
+        // Always clear streaming state when done or on error
+        setIsStreaming(false);
+        setStreamingContent("");
+        setCurrentNode(null);
       }
     },
     []
@@ -97,6 +123,9 @@ export function useMessages(): UseMessagesReturn {
   return {
     messages,
     loading,
+    isStreaming,
+    streamingContent,
+    currentNode,
     loadMessages,
     sendMessage,
     scrollToBottom,

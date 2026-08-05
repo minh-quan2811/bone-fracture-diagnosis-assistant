@@ -73,3 +73,18 @@ html, body {
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
 }
+/* Blinking cursor shown at the end of a streaming AI message */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.streaming-cursor::after {
+  content: "▍";
+  display: inline-block;
+  color: var(--color-primary-medium);
+  font-size: 0.9em;
+  line-height: 1;
+  margin-left: 1px;
+  animation: blink 0.8s step-start infinite;
+}

@@ -1,4 +1,7 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.schemas.conversation import ConversationCreate, ConversationOut
@@ -45,23 +48,29 @@ def get_conversation(
         raise HTTPException(status_code=404, detail="Conversation not found or access denied")
     return conversation
 
-
-@router.post("/conversations/{conversation_id}/messages", response_model=list[MessageOut])
-def add_message(
+@router.post("/conversations/{conversation_id}/messages/stream")
+async def stream_message(
     conversation_id: int,
     message_in: MessageCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Add a message to a conversation and get AI response"""
-    result, status_code = conversation_service.add_message_with_reply(
-        conversation_id, message_in.content, current_user, db
+    """Add a message to a conversation and stream the AI response via"""
+    async def event_stream():
+        async for event in conversation_service.stream_message_with_reply(
+            conversation_id, message_in.content, current_user, db
+        ):
+            yield f"data: {json.dumps(event)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
-    
-    if status_code != 200:
-        raise HTTPException(status_code=status_code, detail=result.get("error"))
-    
-    return result.get("messages")
 
 
 @router.get("/conversations/{conversation_id}/messages", response_model=list[MessageOut])

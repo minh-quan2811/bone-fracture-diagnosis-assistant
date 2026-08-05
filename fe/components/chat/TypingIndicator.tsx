@@ -1,4 +1,24 @@
-export function TypingIndicator() {
+/**
+ * Maps internal LangGraph node names to user-facing status labels.
+ * These names must match the node names defined in _build_graph() on the backend.
+ */
+const NODE_LABELS: Record<string, string> = {
+  classify: "Classifying question...",
+  retrieve: "Searching knowledge base...",
+  generate: "Generating answer...",
+};
+
+interface TypingIndicatorProps {
+  /** Current LangGraph node name, e.g. "classify" | "retrieve" | "generate" */
+  currentNode?: string | null;
+}
+
+export function TypingIndicator({ currentNode }: TypingIndicatorProps) {
+  const label =
+    currentNode && NODE_LABELS[currentNode]
+      ? NODE_LABELS[currentNode]
+      : "AI is thinking...";
+
   return (
     <div className="flex justify-start">
       <div className="max-w-2xl bg-white shadow-md border border-gray-200 rounded-lg p-4">
@@ -9,10 +29,10 @@ export function TypingIndicator() {
           <div className="flex items-center space-x-3">
             <div className="flex space-x-1">
               <div className="w-2 h-2 bg-[var(--color-primary-medium)] rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-[var(--color-primary-medium)] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-              <div className="w-2 h-2 bg-[var(--color-primary-medium)] rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+              <div className="w-2 h-2 bg-[var(--color-primary-medium)] rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
+              <div className="w-2 h-2 bg-[var(--color-primary-medium)] rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
             </div>
-            <span className="text-sm text-gray-700 font-medium">AI is thinking...</span>
+            <span className="text-sm text-gray-700 font-medium">{label}</span>
           </div>
         </div>
       </div>
