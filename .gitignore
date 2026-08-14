@@ -12,14 +12,8 @@ __pycache__/
 *.pt
 *.onnx
 
-# Ignore all common image files
-*.jpg
-*.jpeg
-*.png
-*.bmp
-*.gif
-*.tiff
-*.webp
+# Ignore uploads folder
+uploads/
 
 # Ignore document files
 *.pdf
