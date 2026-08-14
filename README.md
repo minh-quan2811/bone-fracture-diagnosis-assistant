@@ -20,6 +20,7 @@
 - [Overview](#overview)
 - [Features](#features)
 - [Architecture](#architecture)
+- [Chatbot](#chatbot)
 - [Tech Stack](#tech-stack)
 
 ---
@@ -60,6 +61,18 @@ This platform bridges theoretical medical education with practical diagnostic sk
 ![Architecture Diagram](assets/architecture.jpg)
 
 ---
+
+## 💬 Chatbot
+
+The chatbot answers student questions using a LangGraph pipeline with three steps:
+
+1. **Classify** — decides if the question needs the knowledge base (RAG) or is just casual chat
+2. **Retrieve** — if needed, runs hybrid search (dense + BM25) over the document store, fuses results with RRF, then reranks with Cohere
+3. **Generate** — combines retrieved context and conversation memory to write the answer
+
+Conversation memory is kept in Redis for recent turns, and older turns get summarized and stored so the chatbot stays aware of context without unbounded growth.
+
+![Chatbot Architecture](assets/chatbot.jpg)
 
 ## 🛠️ Tech Stack
 
@@ -156,7 +169,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 Start the Celery worker (separate terminal):
 
 ```bash
-celery -A celery_app worker --loglevel=info -Q fracture_queue,document_queue --concurrency=2
+celery -A celery_app worker --loglevel=info -Q fracture_queue,document_queue,memory_queue --pool=solo
 ```
 
 Backend is available at: http://localhost:8000
